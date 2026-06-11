@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>供应商管理 - 3D打印耗材管理系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/theme.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#f57c00',
+                        secondary: '#fff3e0',
+                        dark: '#212121',
+                        gray: {
+                            100: '#f5f5f5',
+                            200: '#eeeeee',
+                            300: '#f0f0f0',
+                            500: '#666666',
+                            700: '#999999'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            height: 56px;
+            padding: 0 16px;
+            color: #6B7280;
+            transition: background-color 0.2s;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            margin-left: 8px;
+            margin-right: 8px;
+        }
+        .sidebar-item:hover {
+            background-color: #E5E7EB;
+        }
+        .sidebar-active {
+            background-color: #F97316 !important;
+            color: white !important;
+            border-left: 4px solid #EA580C;
+        }
+        .btn-primary {
+            @apply bg-primary text-white px-4 py-2 rounded-md hover:bg-opacity-90 transition-colors;
+        }
+        .btn-outline {
+            @apply border border-gray-300 text-gray-600 px-4 py-2 rounded-md hover:bg-gray-100 transition-colors;
+        }
+        .no-spin-button::-webkit-inner-spin-button,
+        .no-spin-button::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .no-spin-button {
+            -moz-appearance: textfield;
+        }
+    </style>
+    <script>
+        (function() {
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (isCollapsed) {
+                document.write('<style id="sidebar-init-style">body { visibility: hidden; }</style>');
+                document.addEventListener('DOMContentLoaded', function() {
+                    const sidebar = document.getElementById('sidebar');
+                    const sidebarItems = document.querySelectorAll('.sidebar-item span');
+                    const siteTitle = document.getElementById('siteTitle');
+                    const sidebarToggle = document.getElementById('sidebarToggle');
+                    
+                    sidebar.classList.remove('w-64');
+                    sidebar.classList.add('w-16');
+                    sidebarItems.forEach(item => item.classList.add('hidden'));
+                    if (siteTitle) siteTitle.classList.add('hidden');
+                    const icon = sidebarToggle.querySelector('i');
+                    if (icon) {
+                        icon.classList.remove('fa-angle-left');
+                        icon.classList.add('fa-angle-right');
+                    }
+                    
+                    document.getElementById('sidebar-init-style').remove();
+                    document.body.style.visibility = 'visible';
+                });
+            }
+        })();
+    </script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="flex h-screen overflow-hidden">
+        <aside id="sidebar" class="w-64 bg-white border-r border-gray-200 flex flex-col transition-all duration-300">
+            <a href="index.html" class="px-4 py-4 flex items-center hover:bg-gray-100 transition-colors cursor-pointer">
+                <div class="w-10 h-10 bg-primary rounded-md flex items-center justify-center text-white">
+                    <i class="fa fa-cube"></i>
+                </div>
+                <h1 id="siteTitle" class="ml-3 text-lg font-bold text-dark"></h1>
+            </a>
+            
+            <nav class="flex-1 overflow-y-auto">
+                <ul>
+                    <li>
+                        <a href="index.html" class="sidebar-item">
+                            <i class="fa fa-home w-5 mr-3"></i>
+                            <span>主页</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="filament.html" class="sidebar-item">
+                            <i class="fa fa-paint-brush w-5 mr-3"></i>
+                            <span>耗材</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="supplier.html" class="sidebar-item sidebar-active">
+                            <i class="fa fa-truck w-5 mr-3"></i>
+                            <span>供应商</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="calculator.html" class="sidebar-item">
+                            <i class="fa fa-calculator w-5 mr-3"></i>
+                            <span>费用预估</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="expense.html" class="sidebar-item">
+                            <i class="fa fa-bar-chart w-5 mr-3"></i>
+                            <span>花费统计</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="sales.html" class="sidebar-item">
+                            <i class="fa fa-line-chart w-5 mr-3"></i>
+                            <span>销售情况</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="inventory.html" class="sidebar-item">
+                            <i class="fa fa-database w-5 mr-3"></i>
+                            <span>库存管理</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="qiaodoudou.html" class="sidebar-item">
+                            <i class="fa fa-th w-5 mr-3"></i>
+                            <span>敲豆豆</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="px-4 py-3 border-t border-gray-200">
+                <button id="sidebarToggle" class="w-full flex items-center justify-center text-gray-500 hover:text-primary transition-colors">
+                    <i class="fa fa-angle-left"></i>
+                </button>
+            </div>
+        </aside>
+        
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <div class="bg-white border-b border-gray-200 p-4 flex justify-end items-center h-20"></div>
+            
+            <div class="flex-1 overflow-y-auto p-6">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-dark">供应商管理</h2>
+                    <p class="text-gray-500 mt-1">管理耗材供应商信息</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-gray-500">供应商总数</span>
+                            <i class="fa fa-truck text-gray-400"></i>
+                        </div>
+                        <div id="totalSuppliers" class="text-2xl font-bold text-dark">0</div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-gray-500">关联耗材</span>
+                            <i class="fa fa-paint-brush text-gray-400"></i>
+                        </div>
+                        <div id="linkedSpools" class="text-2xl font-bold text-primary">0</div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-gray-500">总采购金额</span>
+                            <i class="fa fa-money text-gray-400"></i>
+                        </div>
+                        <div id="totalPurchase" class="text-2xl font-bold text-dark">¥0.00</div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-sm mb-6">
+                    <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+                        <h3 class="text-lg font-semibold text-dark">供应商列表</h3>
+                        <button onclick="openAddSupplierModal()" class="btn-primary flex items-center">
+                            <i class="fa fa-plus mr-2"></i>
+                            添加供应商
+                        </button>
+                    </div>
+                    
+                    <div class="p-4 border-b border-gray-200">
+                        <div class="flex gap-2">
+                            <input type="text" id="searchSupplier" placeholder="搜索供应商名称..." 
+                                class="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                                oninput="renderSupplierTable()">
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">供应商名称</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">联系人</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">联系电话</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">邮箱</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">地址</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">关联耗材</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="supplierTableBody" class="divide-y divide-gray-200">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <footer class="bg-white border-t border-gray-200 p-4 flex justify-center items-center">
+                <div class="text-xs text-gray-700">版本 1.0.1</div>
+            </footer>
+        </main>
+        
+        <button id="settingsBtn" class="fixed bottom-4 right-4 w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white shadow-md hover:bg-opacity-90 transition-colors z-40">
+            <i class="fa fa-gear"></i>
+        </button>
+        
+        <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-dark">设置</h3>
+                    <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fa fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">网站名称</label>
+                    <input type="text" id="siteNameInput" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="请输入网站名称">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">耗材类型管理</label>
+                    <div id="materialTypesList" class="flex flex-wrap gap-2 mb-2"></div>
+                    <div class="flex gap-2">
+                        <input type="text" id="newMaterialType" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="输入新耗材类型">
+                        <button id="addMaterialType" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+                            <i class="fa fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">产品系列管理</label>
+                    <div id="brandTypesList" class="flex flex-wrap gap-2 mb-2"></div>
+                    <div class="flex gap-2">
+                        <input type="text" id="newBrandType" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="输入新产品系列">
+                        <button id="addBrandType" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+                            <i class="fa fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">主题设置</label>
+                    <button type="button" class="theme-toggle-btn w-full flex items-center justify-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:opacity-90 transition-opacity">
+                        <i class="fa fa-moon-o mr-2"></i>深色模式
+                    </button>
+                </div>
+                
+                <div class="flex justify-end">
+                    <button id="saveSettings" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-colors">
+                        保存设置
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="addSupplierModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4">
+            <div class="flex justify-between items-center p-4 border-b border-gray-200">
+                <h3 id="modalTitle" class="text-lg font-semibold text-dark">添加供应商</h3>
+                <button onclick="closeAddSupplierModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <form id="addSupplierForm" class="p-4">
+                <input type="hidden" id="supplierId">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">供应商名称 <span class="text-red-500">*</span></label>
+                    <input type="text" name="name" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">联系人</label>
+                    <input type="text" name="contact" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">联系电话</label>
+                    <input type="tel" name="phone" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">邮箱</label>
+                    <input type="email" name="email" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">地址</label>
+                    <input type="text" name="address" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">备注</label>
+                    <textarea name="notes" rows="3" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
+                </div>
+                <div class="flex justify-end space-x-4">
+                    <button type="button" onclick="closeAddSupplierModal()" class="px-6 py-3 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors font-medium">取消</button>
+                    <button type="submit" class="px-8 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-opacity-90 transition-colors shadow-md hover:shadow-lg">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="supplierDetailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-lg mx-4">
+            <div class="flex justify-between items-center p-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-dark">供应商详情</h3>
+                <button onclick="closeSupplierDetailModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <div id="supplierDetail" class="p-4">
+            </div>
+        </div>
+    </div>
+    <div id="messageModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-sm mx-4">
+            <div class="flex justify-between items-center p-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-dark">提示</h3>
+                <button onclick="closeMessageModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <div class="p-4">
+                <p id="messageContent" class="text-gray-700"></p>
+            </div>
+            <div class="flex justify-end p-4 border-t border-gray-200">
+                <button onclick="closeMessageModal()" class="px-6 py-2 bg-primary text-white rounded-lg font-medium hover:bg-opacity-90 transition-colors">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="settings.js"></script>
+    <script>
+        const API_BASE_URL = '/api';
+        let suppliers = [];
+        let spools = [];
+        let expenses = [];
+        
+        async function loadData() {
+            await Promise.all([
+                loadSuppliers(),
+                loadSpools(),
+                loadExpenses()
+            ]);
+            updateStatistics();
+            renderSupplierTable();
+        }
+        
+        async function loadSuppliers() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/suppliers`);
+                const data = await response.json();
+                if (data.success) {
+                    suppliers = data.data;
+                }
+            } catch (error) {
+                console.error('加载供应商失败:', error);
+            }
+        }
+        
+        async function loadSpools() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/spools`);
+                const data = await response.json();
+                if (data.success) {
+                    spools = data.data;
+                }
+            } catch (error) {
+                console.error('加载耗材失败:', error);
+            }
+        }
+        
+        async function loadExpenses() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/expense-records`);
+                const data = await response.json();
+                if (data.success) {
+                    expenses = data.data;
+                }
+            } catch (error) {
+                console.error('加载费用记录失败:', error);
+            }
+        }
+        
+        function updateStatistics() {
+            document.getElementById('totalSuppliers').textContent = suppliers.length;
+            
+            const linkedSpools = spools.filter(s => s.supplierId).length;
+            document.getElementById('linkedSpools').textContent = linkedSpools;
+            
+            const totalPurchase = expenses
+                .filter(e => e.supplierId)
+                .reduce((sum, e) => sum + e.amount, 0);
+            document.getElementById('totalPurchase').textContent = `¥${totalPurchase.toFixed(2)}`;
+        }
+        
+        function renderSupplierTable() {
+            const searchTerm = document.getElementById('searchSupplier').value.toLowerCase();
+            const filtered = suppliers.filter(s => 
+                s.name.toLowerCase().includes(searchTerm) ||
+                (s.contact && s.contact.toLowerCase().includes(searchTerm)) ||
+                (s.phone && s.phone.includes(searchTerm))
+            );
+            
+            const tbody = document.getElementById('supplierTableBody');
+            
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="px-4 py-8 text-center text-gray-500">暂无供应商信息</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = filtered.map(supplier => {
+                const linkedSpoolCount = spools.filter(s => s.supplierId === supplier._id).length;
+                return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3">
+                            <div class="font-medium text-dark">${supplier.name}</div>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-600">${supplier.contact || '-'}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600">${supplier.phone || '-'}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600">${supplier.email || '-'}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600">${supplier.address || '-'}</td>
+                        <td class="px-4 py-3">
+                            <span class="px-2 py-1 rounded text-xs font-medium ${linkedSpoolCount > 0 ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600'}">
+                                ${linkedSpoolCount} 个耗材
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            <button onclick="showSupplierDetail('${supplier._id}')" class="text-blue-500 hover:text-blue-700 mr-2">
+                                <i class="fa fa-eye"></i>
+                            </button>
+                            <button onclick="editSupplier('${supplier._id}')" class="text-primary hover:text-opacity-80 mr-2">
+                                <i class="fa fa-edit"></i>
+                            </button>
+                            <button onclick="deleteSupplier('${supplier._id}')" class="text-red-500 hover:text-red-700">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        function showSupplierDetail(id) {
+            const supplier = suppliers.find(s => s._id === id);
+            if (!supplier) return;
+            
+            const linkedSpools = spools.filter(s => s.supplierId === id);
+            const supplierExpenses = expenses.filter(e => e.supplierId === id);
+            const totalPurchase = supplierExpenses.reduce((sum, e) => sum + e.amount, 0);
+            
+            const detail = document.getElementById('supplierDetail');
+            detail.innerHTML = `
+                <div class="space-y-3">
+                    <div class="flex justify-between py-2 border-b">
+                        <span class="text-gray-600">供应商名称:</span>
+                        <span class="font-medium">${supplier.name}</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b">
+                        <span class="text-gray-600">联系人:</span>
+                        <span class="font-medium">${supplier.contact || '-'}</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b">
+                        <span class="text-gray-600">联系电话:</span>
+                        <span class="font-medium">${supplier.phone || '-'}</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b">
+                        <span class="text-gray-600">邮箱:</span>
+                        <span class="font-medium">${supplier.email || '-'}</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b">
+                        <span class="text-gray-600">地址:</span>
+                        <span class="font-medium">${supplier.address || '-'}</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b">
+                        <span class="text-gray-600">备注:</span>
+                        <span class="font-medium">${supplier.notes || '-'}</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b">
+                        <span class="text-gray-600">关联耗材:</span>
+                        <span class="font-medium">${linkedSpools.length} 个</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b">
+                        <span class="text-gray-600">采购总额:</span>
+                        <span class="font-medium text-primary">¥${totalPurchase.toFixed(2)}</span>
+                    </div>
+                    ${linkedSpools.length > 0 ? `
+                        <div class="mt-4">
+                            <h4 class="font-medium text-dark mb-2">关联耗材列表</h4>
+                            <div class="space-y-2">
+                                ${linkedSpools.map(spool => `
+                                    <div class="flex items-center p-2 bg-gray-50 rounded">
+                                        <div class="w-4 h-4 rounded-full mr-2" style="background-color: ${spool.colorCode || '#3b82f6'}"></div>
+                                        <span class="text-sm">${spool.brand} - ${spool.color} ${spool.material}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            document.getElementById('supplierDetailModal').classList.remove('hidden');
+            document.getElementById('supplierDetailModal').classList.add('flex');
+        }
+        
+        function closeSupplierDetailModal() {
+            document.getElementById('supplierDetailModal').classList.add('hidden');
+            document.getElementById('supplierDetailModal').classList.remove('flex');
+        }
+        
+        function openAddSupplierModal() {
+            document.getElementById('modalTitle').textContent = '添加供应商';
+            document.getElementById('supplierId').value = '';
+            document.getElementById('addSupplierForm').reset();
+            document.getElementById('addSupplierModal').classList.remove('hidden');
+            document.getElementById('addSupplierModal').classList.add('flex');
+        }
+        
+        function closeAddSupplierModal() {
+            document.getElementById('addSupplierModal').classList.add('hidden');
+            document.getElementById('addSupplierModal').classList.remove('flex');
+        }
+        
+        function showMessage(message) {
+            document.getElementById('messageContent').textContent = message;
+            document.getElementById('messageModal').classList.remove('hidden');
+            document.getElementById('messageModal').classList.add('flex');
+        }
+        
+        function closeMessageModal() {
+            document.getElementById('messageModal').classList.add('hidden');
+            document.getElementById('messageModal').classList.remove('flex');
+        }
+        
+        function editSupplier(id) {
+            const supplier = suppliers.find(s => s._id === id);
+            if (!supplier) return;
+            
+            document.getElementById('modalTitle').textContent = '编辑供应商';
+            document.getElementById('supplierId').value = id;
+            document.querySelector('input[name="name"]').value = supplier.name;
+            document.querySelector('input[name="contact"]').value = supplier.contact || '';
+            document.querySelector('input[name="phone"]').value = supplier.phone || '';
+            document.querySelector('input[name="email"]').value = supplier.email || '';
+            document.querySelector('input[name="address"]').value = supplier.address || '';
+            document.querySelector('textarea[name="notes"]').value = supplier.notes || '';
+            
+            document.getElementById('addSupplierModal').classList.remove('hidden');
+            document.getElementById('addSupplierModal').classList.add('flex');
+        }
+        
+        async function deleteSupplier(id) {
+            if (!confirm('确定要删除这个供应商吗？关联的耗材将不再关联到此供应商。')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/suppliers/${id}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showMessage('删除成功！');
+                    loadData();
+                } else {
+                    showMessage('删除失败：' + data.message);
+                }
+            } catch (error) {
+                console.error('删除失败:', error);
+                showMessage('删除失败：网络错误');
+            }
+        }
+        
+        function initSidebarToggle() {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarItems = document.querySelectorAll('.sidebar-item span');
+            const siteTitle = document.getElementById('siteTitle');
+            
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (isCollapsed) {
+                sidebar.classList.add('w-16');
+                sidebar.classList.remove('w-64');
+                sidebarItems.forEach(item => item.classList.add('hidden'));
+                if (siteTitle) siteTitle.classList.add('hidden');
+                const icon = sidebarToggle.querySelector('i');
+                if (icon) {
+                    icon.classList.remove('fa-angle-left');
+                    icon.classList.add('fa-angle-right');
+                }
+            }
+            
+            sidebarToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('w-64');
+                sidebar.classList.toggle('w-16');
+                
+                sidebarItems.forEach(item => {
+                    item.classList.toggle('hidden');
+                });
+                
+                if (siteTitle) {
+                    siteTitle.classList.toggle('hidden');
+                }
+                
+                const icon = sidebarToggle.querySelector('i');
+                if (icon) {
+                    icon.classList.toggle('fa-angle-left');
+                    icon.classList.toggle('fa-angle-right');
+                }
+                
+                localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('w-16'));
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            initPageSettings();
+            loadData();
+            initSidebarToggle();
+            
+            document.getElementById('addSupplierForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const id = document.getElementById('supplierId').value;
+                const supplierData = {
+                    name: this.name.value,
+                    contact: this.contact.value,
+                    phone: this.phone.value,
+                    email: this.email.value,
+                    address: this.address.value,
+                    notes: this.notes.value
+                };
+                
+                try {
+                    const url = id ? `${API_BASE_URL}/suppliers/${id}` : `${API_BASE_URL}/suppliers`;
+                    const method = id ? 'PUT' : 'POST';
+                    
+                    const response = await fetch(url, {
+                        method: method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(supplierData)
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        showMessage(id ? '更新成功！' : '添加成功！');
+                        closeAddSupplierModal();
+                        loadData();
+                    } else {
+                        showMessage('保存失败：' + data.message);
+                    }
+                } catch (error) {
+                    console.error('保存失败:', error);
+                    showMessage('保存失败：网络错误');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

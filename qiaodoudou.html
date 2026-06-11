@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>敲豆豆 - 3D打印耗材管理系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#f57c00',
+                        dark: '#212121'
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 编辑器专用样式 */
+        #editor-container {
+            display: flex;
+            height: 100%;
+            overflow: hidden;
+        }
+        #panel {
+            width: 360px; min-width: 360px; background-color: #252526; padding: 20px;
+            box-sizing: border-box; display: flex; flex-direction: column;
+            gap: 12px; box-shadow: 2px 0 10px rgba(0,0,0,0.3); z-index: 10; overflow-y: auto;
+        }
+        #viewer {
+            flex-grow: 1; position: relative; background-color: #121212;
+            display: flex; justify-content: center; align-items: center; padding: 20px;
+            box-sizing: border-box; overflow: auto;
+        }
+        #preview-canvas {
+            max-width: 100%; max-height: 100%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background-color: #1a1a1a;
+            display: none;
+            cursor: crosshair;
+            background-image: linear-gradient(45deg, #222 25%, transparent 25%), 
+                              linear-gradient(-45deg, #222 25%, transparent 25%), 
+                              linear-gradient(45deg, transparent 75%, #222 75%), 
+                              linear-gradient(-45deg, transparent 75%, #222 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+        #placeholder-text { color: #555; font-size: 18px; font-weight: bold; }
+
+        .ed-h2, .ed-h3 { margin: 0 0 5px 0; color: #4fc1ff; }
+        .ed-h2 { font-size: 20px; }
+        .ed-h3 { font-size: 15px; margin-top: 5px; border-left: 3px solid #007acc; padding-left: 6px;}
+        .control-group { display: flex; flex-direction: column; gap: 4px; }
+        .size-row { display: flex; gap: 10px; }
+        .size-row .control-group { flex: 1; }
+        .ed-label { font-size: 12px; color: #cccccc; }
+        .ed-input, .ed-select, .ed-btn {
+            padding: 8px 10px; border-radius: 4px; border: 1px solid #3c3c3c;
+            background-color: #3c3c3c; color: #fff; font-size: 13px; outline: none;
+            width: 100%; box-sizing: border-box;
+        }
+        .ed-input[type="range"] { width: 100%; margin: 4px 0; }
+        .ed-input[type="file"] { padding: 5px; }
+        .ed-select { cursor: pointer; padding: 8px 10px; }
+        
+        .color-picker-wrapper { display: flex; align-items: center; gap: 10px; }
+        .ed-input[type="color"] {
+            -webkit-appearance: none; border: none; width: 40px; height: 32px; 
+            border-radius: 4px; cursor: pointer; background: none; padding: 0;
+        }
+        .ed-input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        .ed-input[type="color"]::-webkit-color-swatch { border: 1px solid #555; border-radius: 4px; }
+
+        .ed-btn {
+            background-color: #007acc; cursor: pointer; border: none; font-weight: bold;
+            transition: background 0.2s; margin-top: 5px; padding: 10px;
+        }
+        .ed-btn:hover { background-color: #0062a3; }
+        .ed-btn:disabled { background-color: #555; cursor: not-allowed; }
+        
+        #stats-container { margin-top: 5px; border-top: 1px solid #3c3c3c; padding-top: 10px; }
+        #color-list { max-height: 180px; overflow-y: auto; padding-right: 5px; }
+        .color-rank { display: flex; align-items: center; margin-bottom: 6px; font-size: 12px; }
+        .color-box-picker { width: 24px; height: 24px; border: 1px solid #fff; margin-right: 8px; border-radius: 4px; cursor: pointer; padding: 0; flex-shrink: 0; }
+        .color-count { margin-left: auto; font-weight: bold; color: #cee3b8; }
+        
+        #crop-modal {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.85); display: none; justify-content: center;
+            align-items: center; z-index: 200; flex-direction: column; gap: 20px;
+        }
+        .crop-wrapper { width: 70vw; height: 60vh; background: #000; border-radius: 4px; overflow: hidden; }
+        .crop-wrapper img { max-width: 100%; max-height: 100%; display: block; }
+        .crop-btns { display: flex; gap: 20px; width: 320px; }
+        
+        #hidden-canvas { display: none; }
+        #crop-preview-img { width: 100%; height: 80px; object-fit: contain; background: #1a1a1a; border: 1px dashed #555; border-radius: 4px; }
+        .editor-tool-row { display: flex; gap: 6px; background-color: #1e1e1e; padding: 8px; border-radius: 4px; border: 1px solid #333; }
+    </style>
+    <script>
+        (function() {
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (isCollapsed) {
+                document.write('<style id="sidebar-init-style">body { visibility: hidden; }</style>');
+                document.addEventListener('DOMContentLoaded', function() {
+                    const sidebar = document.getElementById('sidebar');
+                    const sidebarItems = document.querySelectorAll('.sidebar-item span');
+                    const siteTitle = document.getElementById('siteTitle');
+                    const sidebarToggle = document.getElementById('sidebarToggle');
+                    sidebar.classList.remove('w-64');
+                    sidebar.classList.add('w-16');
+                    sidebarItems.forEach(item => item.classList.add('hidden'));
+                    if (siteTitle) siteTitle.classList.add('hidden');
+                    const icon = sidebarToggle.querySelector('i');
+                    if (icon) { icon.classList.remove('fa-angle-left'); icon.classList.add('fa-angle-right'); }
+                    document.getElementById('sidebar-init-style').remove();
+                    document.body.style.visibility = 'visible';
+                });
+            }
+        })();
+    </script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="flex h-screen overflow-hidden">
+        <!-- 侧边栏 -->
+        <aside id="sidebar" class="w-64 bg-white border-r border-gray-200 flex flex-col transition-all duration-300">
+            <a href="index.html" class="px-4 py-4 flex items-center hover:bg-gray-100 transition-colors cursor-pointer">
+                <div class="w-10 h-10 bg-primary rounded-md flex items-center justify-center text-white">
+                    <i class="fa fa-cube"></i>
+                </div>
+                <h1 id="siteTitle" class="ml-3 text-lg font-bold text-dark"></h1>
+            </a>
+            <nav class="flex-1 overflow-y-auto">
+                <ul>
+                    <li><a href="index.html" class="sidebar-item"><i class="fa fa-home w-5 mr-3"></i><span>主页</span></a></li>
+                    <li><a href="filament.html" class="sidebar-item"><i class="fa fa-paint-brush w-5 mr-3"></i><span>耗材</span></a></li>
+                    <li><a href="supplier.html" class="sidebar-item"><i class="fa fa-truck w-5 mr-3"></i><span>供应商</span></a></li>
+                    <li><a href="calculator.html" class="sidebar-item"><i class="fa fa-calculator w-5 mr-3"></i><span>费用预估</span></a></li>
+                    <li><a href="expense.html" class="sidebar-item"><i class="fa fa-bar-chart w-5 mr-3"></i><span>花费统计</span></a></li>
+                    <li><a href="sales.html" class="sidebar-item"><i class="fa fa-line-chart w-5 mr-3"></i><span>销售情况</span></a></li>
+                    <li><a href="inventory.html" class="sidebar-item"><i class="fa fa-database w-5 mr-3"></i><span>库存管理</span></a></li>
+                    <li><a href="qiaodoudou.html" class="sidebar-item sidebar-active"><i class="fa fa-th w-5 mr-3"></i><span>敲豆豆</span></a></li>
+                </ul>
+            </nav>
+            <div class="px-4 py-3 border-t border-gray-200">
+                <button id="sidebarToggle" class="w-full flex items-center justify-center text-gray-500 hover:text-primary transition-colors">
+                    <i class="fa fa-angle-left"></i>
+                </button>
+            </div>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <div class="bg-white border-b border-gray-200 p-4 h-14 flex items-center flex-shrink-0">
+                <h2 class="text-xl font-bold text-dark">敲豆豆/拼豆网格智能编辑器</h2>
+            </div>
+            <div class="flex-1 overflow-hidden">
+                <div id="editor-container">
+                    <div id="panel">
+                        <div class="control-group">
+                            <label class="ed-label">1. 上传图片 (JPG/PNG)</label>
+                            <input type="file" id="image-loader" accept="image/*" class="ed-input">
+                        </div>
+
+                        <div class="control-group">
+                            <label class="ed-label">截取区域预览：</label>
+                            <img id="crop-preview-img" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="等待上传">
+                            <button id="recrop-btn" class="ed-btn" style="background-color: #555; padding: 5px;" disabled>重新截取区域</button>
+                        </div>
+
+                        <div class="size-row">
+                            <div class="control-group">
+                                <label class="ed-label">2. 成型总宽度 X (mm)</label>
+                                <input type="number" id="stl-width" value="120" min="10" max="1000" class="ed-input">
+                            </div>
+                            <div class="control-group">
+                                <label class="ed-label">3. 成型总高度 Y (mm)</label>
+                                <input type="number" id="stl-height" value="120" min="10" max="1000" class="ed-input">
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <label class="ed-label">4. 单个网格内径大小 (mm) [豆豆定位孔尺寸]</label>
+                            <input type="number" id="pixel-size" value="5" min="2" max="50" class="ed-input">
+                        </div>
+
+                        <div class="size-row">
+                            <div class="control-group">
+                                <label class="ed-label">5. 格栅边框宽度 (mm)</label>
+                                <input type="number" id="grid-width" value="1.0" min="0.2" max="5" step="0.1" class="ed-input">
+                            </div>
+                            <div class="control-group">
+                                <label class="ed-label">6. 限制色彩数量</label>
+                                <input type="number" id="color-count-limit" value="0" min="0" max="256" class="ed-input">
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <label class="ed-label">7. 近似颜色合并容差: <span id="color-tolerance-val">30</span></label>
+                            <input type="range" id="color-tolerance" min="0" max="150" value="30" class="ed-input">
+                        </div>
+
+                        <div class="control-group">
+                            <label class="ed-label">8. 抠图处理模式</label>
+                            <select id="keep-background" class="ed-select">
+                                <option value="false" selected>去除外部背景（边缘连通域泛洪抠图）</option>
+                                <option value="true">保留背景（完整矩形网格）</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group" id="tolerance-wrapper">
+                            <label class="ed-label">外部背景边缘判定容差: <span id="bg-tolerance-val">35</span></label>
+                            <input type="range" id="bg-tolerance" min="5" max="150" value="35" class="ed-input">
+                        </div>
+
+                        <div class="control-group">
+                            <label class="ed-label">9. 调节物理格栅边框颜色 (仅影响预览)</label>
+                            <div class="color-picker-wrapper">
+                                <input type="color" id="grid-color-picker" value="#000000" class="ed-input">
+                                <span id="grid-color-text" style="font-size:13px; font-family:monospace; color:#ccc;">#000000</span>
+                            </div>
+                        </div>
+
+                        <div class="control-group" style="border-top:1px dashed #444; padding-top:6px;">
+                            <label class="ed-label" style="color:#4fc1ff; font-weight:bold;">10. 画布手工编辑交互工具</label>
+                            <div class="editor-tool-row">
+                                <div style="flex:1;">
+                                    <label class="ed-label">模式</label>
+                                    <select id="edit-mode" class="ed-select" style="padding:4px; font-size:12px;">
+                                        <option value="brush" selected>画笔着色</option>
+                                        <option value="eraser">橡皮擦除</option>
+                                        <option value="picker">吸管吸色</option>
+                                    </select>
+                                </div>
+                                <div style="width:70px;">
+                                    <label class="ed-label">画笔颜色</label>
+                                    <input type="color" id="brush-color-picker" value="#FF0000" style="width:100%; height:26px; margin-top:2px;">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button id="generate-btn" class="ed-btn" disabled>刷新平面预览</button>
+                        <button id="export-btn" class="ed-btn" style="background-color: #388e3c;" disabled>导出 1:1 立方高度网格 (STL)</button>
+
+                        <div id="stats-container">
+                            <h3 class="ed-h3">物料格子统计 (可直接点击色块改色)</h3>
+                            <div id="pixel-info" style="font-size: 11px; color: #aaa; margin-bottom: 6px; line-height: 1.4;">暂无数据</div>
+                            <div id="color-list"></div>
+                        </div>
+                    </div>
+
+                    <div id="viewer">
+                        <div id="placeholder-text">等待上传图片并渲染平面图...</div>
+                        <canvas id="preview-canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 裁剪弹窗 -->
+    <div id="crop-modal">
+        <div class="crop-wrapper">
+            <img id="crop-image" src="" alt="裁剪图">
+        </div>
+        <div class="crop-btns">
+            <button id="crop-cancel-btn" class="ed-btn" style="background-color: #f44336;">取消</button>
+            <button id="crop-confirm-btn" class="ed-btn" style="background-color: #4caf50;">确定截取区域</button>
+        </div>
+    </div>
+
+    <canvas id="hidden-canvas"></canvas>
+
+    <script src="js/utils.js"></script>
+    <script src="js/theme.js"></script>
+    <script>
+        // ========== 敲豆豆编辑器逻辑 ==========
+        let cropper = null;
+        let rawImageSrc = null; 
+        let croppedCanvasResult = null; 
+        let lastProcessedData = null;  
+        let paletteOverrides = {};     
+        let isDrawing = false;         
+
+        const imageLoader = document.getElementById('image-loader');
+        const cropPreviewImg = document.getElementById('crop-preview-img'); 
+        const colorLimitInput = document.getElementById('color-count-limit'); 
+        const colorToleranceInput = document.getElementById('color-tolerance');
+        const colorToleranceVal = document.getElementById('color-tolerance-val');
+        const editModeSelect = document.getElementById('edit-mode');
+        const brushColorPicker = document.getElementById('brush-color-picker');
+        const generateBtn = document.getElementById('generate-btn');
+        const exportBtn = document.getElementById('export-btn');
+        const recropBtn = document.getElementById('recrop-btn');
+        const hCanvas = document.getElementById('hidden-canvas');
+        const hCtx = hCanvas.getContext('2d');
+        const pCanvas = document.getElementById('preview-canvas');
+        const pCtx = pCanvas.getContext('2d');
+        const cropModal = document.getElementById('crop-modal');
+        const cropImage = document.getElementById('crop-image');
+        const keepBackgroundSelect = document.getElementById('keep-background');
+        const bgToleranceInput = document.getElementById('bg-tolerance');
+        const bgToleranceVal = document.getElementById('bg-tolerance-val');
+        const gridColorPicker = document.getElementById('grid-color-picker');
+        const gridColorText = document.getElementById('grid-color-text');
+
+        function rgbToHex(r, g, b) {
+            return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+        }
+
+        function hexToRgb(hex) {
+            let num = parseInt(hex.slice(1), 16);
+            return [num >> 16, (num >> 8) & 255, num & 255];
+        }
+
+        bgToleranceInput.addEventListener('input', (e) => {
+            bgToleranceVal.innerText = e.target.value;
+            if (croppedCanvasResult) render2DPreview();
+        });
+
+        colorToleranceInput.addEventListener('input', (e) => {
+            colorToleranceVal.innerText = e.target.value;
+            if (croppedCanvasResult) render2DPreview();
+        });
+
+        keepBackgroundSelect.addEventListener('change', (e) => {
+            document.getElementById('tolerance-wrapper').style.display = e.target.value === 'true' ? 'none' : 'flex';
+            if (croppedCanvasResult) render2DPreview();
+        });
+
+        gridColorPicker.addEventListener('input', (e) => {
+            gridColorText.innerText = e.target.value.toUpperCase();
+            if (lastProcessedData) drawCanvasOnly();
+        });
+
+        imageLoader.addEventListener('change', (e) => {
+            if (!e.target.files.length) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                rawImageSrc = event.target.result;
+                openCropModal(rawImageSrc);
+            }
+            reader.readAsDataURL(e.target.files[0]);
+        });
+
+        recropBtn.addEventListener('click', () => {
+            if (rawImageSrc) openCropModal(rawImageSrc);
+        });
+
+        function openCropModal(src) {
+            cropModal.style.display = 'flex';
+            if (cropper) { cropper.destroy(); cropper = null; }
+            cropImage.onload = function() {
+                setTimeout(() => {
+                    if (cropper) cropper.destroy();
+                    cropper = new Cropper(cropImage, {
+                        viewMode: 1, movable: true, zoomable: true, rotatable: false, scalable: false
+                    });
+                }, 50);
+                cropImage.onload = null; 
+            };
+            cropImage.src = src;
+        }
+
+        document.getElementById('crop-cancel-btn').onclick = function() {
+            cropModal.style.display = 'none';
+            imageLoader.value = '';
+        };
+
+        document.getElementById('crop-confirm-btn').onclick = function() {
+            try {
+                if (!cropper) { alert("裁剪组件未就绪，请稍等"); return; }
+                croppedCanvasResult = cropper.getCroppedCanvas({ imageSmoothingEnabled: true, imageSmoothingQuality: 'high' });
+                if (!croppedCanvasResult) { alert("获取截取图像失败，请重新拉取选区"); return; }
+                cropPreviewImg.src = croppedCanvasResult.toDataURL();
+                cropModal.style.display = 'none'; 
+                generateBtn.disabled = false;
+                recropBtn.disabled = false;
+                render2DPreview(); 
+            } catch (err) {
+                console.error(err);
+                alert("截取确认发生故障: " + err.message);
+            }
+        };
+
+        generateBtn.addEventListener('click', render2DPreview);
+        exportBtn.addEventListener('click', fastExportGridSTL);
+
+        pCanvas.addEventListener('mousedown', (e) => { isDrawing = true; handleCanvasPaint(e); });
+        pCanvas.addEventListener('mousemove', (e) => { if (isDrawing) handleCanvasPaint(e); });
+        window.addEventListener('mouseup', () => { 
+            if (isDrawing) { isDrawing = false; drawPreviewAndStats(); }
+        });
+
+        function handleCanvasPaint(e) {
+            if (!lastProcessedData) return;
+            const { cols, rows, pSize, activeMap, gridColors } = lastProcessedData;
+            const rect = pCanvas.getBoundingClientRect();
+            const cssX = e.clientX - rect.left;
+            const cssY = e.clientY - rect.top;
+            const internalX = (cssX / rect.width) * pCanvas.width;
+            const internalY = (cssY / rect.height) * pCanvas.height;
+            const scale = 8;
+            const gridW = parseFloat(document.getElementById('grid-width').value) || 1.0;
+            const pitch = pSize + gridW; 
+            const c = Math.floor((internalX / scale) / pitch);
+            const r = Math.floor((internalY / scale) / pitch);
+            if (c >= 0 && c < cols && r >= 0 && r < rows) {
+                const mode = editModeSelect.value;
+                const activeColor = brushColorPicker.value.toUpperCase();
+                if (mode === 'brush') {
+                    activeMap[r][c] = true;
+                    gridColors[r][c] = activeColor;
+                    drawCanvasOnly(); 
+                } else if (mode === 'eraser') {
+                    activeMap[r][c] = false;
+                    drawCanvasOnly(); 
+                } else if (mode === 'picker') {
+                    if (activeMap[r][c]) {
+                        const currentHex = paletteOverrides[gridColors[r][c]] || gridColors[r][c];
+                        brushColorPicker.value = currentHex;
+                        editModeSelect.value = 'brush'; 
+                    }
+                }
+            }
+        }
+
+        function render2DPreview() {
+            if (!croppedCanvasResult) return;
+            document.getElementById('placeholder-text').style.display = 'none';
+            pCanvas.style.display = 'block';
+            const targetWidth = parseFloat(document.getElementById('stl-width').value);
+            const targetHeight = parseFloat(document.getElementById('stl-height').value);
+            const pSize = parseFloat(document.getElementById('pixel-size').value);
+            const tolerance = parseInt(bgToleranceInput.value);
+            const keepBackground = keepBackgroundSelect.value === 'true';
+            let colorLimit = parseInt(colorLimitInput.value);
+            if (isNaN(colorLimit) || colorLimit < 0) colorLimit = 0;
+            let colorTolerance = parseInt(colorToleranceInput.value);
+            if (isNaN(colorTolerance) || colorTolerance < 0) colorTolerance = 0;
+            paletteOverrides = {};
+            let cols = Math.round(targetWidth / pSize);
+            let rows = Math.round(targetHeight / pSize);
+            if(cols < 1) cols = 1; if(rows < 1) rows = 1;
+            hCanvas.width = cols;
+            hCanvas.height = rows;
+            hCtx.drawImage(croppedCanvasResult, 0, 0, cols, rows);
+            let imgObject = hCtx.getImageData(0, 0, cols, rows);
+            let imgData = imgObject.data;
+            const corners = [[0,0], [cols-1, 0], [0, rows-1], [cols-1, rows-1]];
+            let refR = 0, refG = 0, refB = 0;
+            corners.forEach(([cx, cy]) => {
+                let idx = (cy * cols + cx) * 4;
+                refR += imgData[idx]; refG += imgData[idx+1]; refB += imgData[idx+2];
+            });
+            refR /= 4; refG /= 4; refB /= 4;
+            const isExternalBackground = Array.from({ length: rows }, () => new Array(cols).fill(false));
+            if (!keepBackground) {
+                const queue = [];
+                function testAndPush(c, r) {
+                    if (c < 0 || c >= cols || r < 0 || r >= rows) return;
+                    if (isExternalBackground[r][c]) return;
+                    const idx = (r * cols + c) * 4;
+                    const dist = Math.sqrt(Math.pow(imgData[idx] - refR, 2) + Math.pow(imgData[idx+1] - refG, 2) + Math.pow(imgData[idx+2] - refB, 2));
+                    if (dist < tolerance) {
+                        isExternalBackground[r][c] = true; 
+                        queue.push([c, r]);
+                    }
+                }
+                for (let c = 0; c < cols; c++) { testAndPush(c, 0); testAndPush(c, rows - 1); }
+                for (let r = 1; r < rows - 1; r++) { testAndPush(0, r); testAndPush(cols - 1, r); }
+                const dirs = [[1,0], [-1,0], [0,1], [0,-1]];
+                while (queue.length > 0) {
+                    const [cx, cy] = queue.shift();
+                    for (let i = 0; i < dirs.length; i++) {
+                        testAndPush(cx + dirs[i][0], cy + dirs[i][1]);
+                    }
+                }
+            }
+            let rawCounts = {};
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (!isExternalBackground[r][c]) {
+                        let idx = (r * cols + c) * 4;
+                        let hex = rgbToHex(imgData[idx], imgData[idx+1], imgData[idx+2]);
+                        rawCounts[hex] = (rawCounts[hex] || 0) + 1;
+                    }
+                }
+            }
+            let sortedRawColors = Object.keys(rawCounts).sort((a, b) => rawCounts[b] - rawCounts[a]);
+            let clusterCenters = []; 
+            let colorClusterMap = {}; 
+            sortedRawColors.forEach(rawHex => {
+                let [r, g, b] = hexToRgb(rawHex);
+                let minDist = Infinity;
+                let bestCenter = null;
+                for (let center of clusterCenters) {
+                    let d = Math.sqrt(Math.pow(r - center[0], 2) + Math.pow(g - center[1], 2) + Math.pow(b - center[2], 2));
+                    if (d <= colorTolerance) {
+                        if (d < minDist) { minDist = d; bestCenter = center; }
+                    }
+                }
+                if (bestCenter) {
+                    colorClusterMap[rawHex] = bestCenter[3]; 
+                } else {
+                    clusterCenters.push([r, g, b, rawHex]); 
+                    colorClusterMap[rawHex] = rawHex;
+                }
+            });
+            let clusteredCounts = {};
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (!isExternalBackground[r][c]) {
+                        let idx = (r * cols + c) * 4;
+                        let rawHex = rgbToHex(imgData[idx], imgData[idx+1], imgData[idx+2]);
+                        let cHex = colorClusterMap[rawHex];
+                        clusteredCounts[cHex] = (clusteredCounts[cHex] || 0) + 1;
+                    }
+                }
+            }
+            let finalAllowedColors = Object.keys(clusteredCounts).sort((a, b) => clusteredCounts[b] - clusteredCounts[a]);
+            let topK = null;
+            if (colorLimit > 0 && finalAllowedColors.length > colorLimit) {
+                topK = finalAllowedColors.slice(0, colorLimit);
+            }
+            const activeMap = [];
+            const gridColors = [];
+            for (let r = 0; r < rows; r++) {
+                activeMap[r] = [];
+                gridColors[r] = [];
+                for (let c = 0; c < cols; c++) {
+                    activeMap[r][c] = !isExternalBackground[r][c];
+                    if (activeMap[r][c]) {
+                        let idx = (r * cols + c) * 4;
+                        let rawHex = rgbToHex(imgData[idx], imgData[idx+1], imgData[idx+2]);
+                        let finalHex = colorClusterMap[rawHex]; 
+                        if (topK && !topK.includes(finalHex)) {
+                            let minDist = Infinity;
+                            let closestHex = topK[0] || "#FFFFFF";
+                            let [fR, fG, fB] = hexToRgb(finalHex);
+                            topK.forEach(tHex => {
+                                let [tR, tG, tB] = hexToRgb(tHex);
+                                let d = Math.sqrt(Math.pow(fR - tR, 2) + Math.pow(fG - tG, 2) + Math.pow(fB - tB, 2));
+                                if (d < minDist) { minDist = d; closestHex = tHex; }
+                            });
+                            finalHex = closestHex;
+                        }
+                        gridColors[r][c] = finalHex;
+                    } else {
+                        gridColors[r][c] = '#000000';
+                    }
+                }
+            }
+            lastProcessedData = { cols, rows, pSize, activeMap, gridColors };
+            drawPreviewAndStats();
+        }
+
+        function drawPreviewAndStats() {
+            if (!lastProcessedData) return;
+            const { cols, rows, pSize, activeMap, gridColors } = lastProcessedData;
+            const scale = 8;
+            const gridW = parseFloat(document.getElementById('grid-width').value) || 1.0;
+            const pitch = pSize + gridW; 
+            pCanvas.width = (cols * pitch + gridW) * scale;
+            pCanvas.height = (rows * pitch + gridW) * scale;
+            drawCanvasOnly();
+            const colorStatsMap = {};
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (activeMap[r][c]) {
+                        const origHex = gridColors[r][c];
+                        colorStatsMap[origHex] = (colorStatsMap[origHex] || 0) + 1;
+                    }
+                }
+            }
+            const sortedColors = Object.entries(colorStatsMap).sort((a, b) => b[1] - a[1]);
+            updateStatsUI(cols, rows, pSize, sortedColors, activeMap);
+        }
+
+        function drawCanvasOnly() {
+            if (!lastProcessedData) return;
+            const { cols, rows, pSize, activeMap } = lastProcessedData;
+            const userGridColor = gridColorPicker.value;
+            const scale = 8;
+            const gridW = parseFloat(document.getElementById('grid-width').value) || 1.0;
+            const pitch = pSize + gridW;
+            pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+            const isActive = (r, c) => {
+                if (r < 0 || r >= rows || c < 0 || c >= cols) return false;
+                return !!activeMap[r][c];
+            };
+            pCtx.fillStyle = userGridColor;
+            for (let r = 0; r <= rows; r++) {
+                for (let c = 0; c <= cols; c++) {
+                    if (isActive(r-1, c-1) || isActive(r-1, c) || isActive(r, c-1) || isActive(r, c)) {
+                        pCtx.fillRect(c * pitch * scale, r * pitch * scale, gridW * scale, gridW * scale);
+                    }
+                }
+            }
+            for (let r = 0; r <= rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (isActive(r-1, c) || isActive(r, c)) {
+                        pCtx.fillRect((c * pitch + gridW) * scale, r * pitch * scale, pSize * scale, gridW * scale);
+                    }
+                }
+            }
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c <= cols; c++) {
+                    if (isActive(r, c-1) || isActive(r, c)) {
+                        pCtx.fillRect(c * pitch * scale, (r * pitch + gridW) * scale, gridW * scale, pSize * scale);
+                    }
+                }
+            }
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (!activeMap[r][c]) continue; 
+                    const origHex = lastProcessedData.gridColors[r][c];
+                    const displayHex = paletteOverrides[origHex] || origHex;
+                    const holeX = (c * pitch + gridW) * scale;
+                    const holeY = (r * pitch + gridW) * scale;
+                    pCtx.fillStyle = displayHex;
+                    pCtx.fillRect(holeX, holeY, pSize * scale, pSize * scale);
+                }
+            }
+        }
+
+        function updateStatsUI(cols, rows, pSize, sortedColors, activeMap) {
+            let totalActive = 0;
+            for(let r=0; r<rows; r++) {
+                for(let c=0; c<cols; c++) if(activeMap[r][c]) totalActive++;
+            }
+            const totalWidthMM = cols * pSize + (cols + 1) * 1.0;
+            const totalHeightMM = rows * pSize + (rows + 1) * 1.0;
+            document.getElementById('pixel-info').innerHTML = `
+                网格解析度: ${cols}列 x ${rows}行 | 有效格子总数: <strong>${totalActive}</strong> 个<br>
+                精准外廓尺寸 (含外框): ${totalWidthMM.toFixed(1)} x ${totalHeightMM.toFixed(1)} mm<br>
+                单个格子内部净空 (内径): <strong style="color:#4fc1ff;">${pSize.toFixed(1)} x ${pSize.toFixed(1)} mm</strong><br>
+                STL格栅整体高度: <strong style="color:#00e676;">${pSize.toFixed(1)} mm (1:1等高立体)</strong>
+            `;
+            const colorListDiv = document.getElementById('color-list');
+            colorListDiv.innerHTML = '';
+            sortedColors.forEach(([origHex, count]) => {
+                const currentDisplayHex = paletteOverrides[origHex] || origHex;
+                const item = document.createElement('div');
+                item.className = 'color-rank';
+                item.innerHTML = `
+                    <input type="color" class="color-box-picker" data-orig="${origHex}" value="${currentDisplayHex}">
+                    <span style="font-family:monospace; font-size:13px; color:#ccc;">${currentDisplayHex}</span>
+                    ${currentDisplayHex !== origHex ? `<span style="color:#666; font-size:10px; margin-left:4px;">(原:${origHex})</span>` : ''}
+                    <span class="color-count">${count} 个</span>
+                `;
+                const picker = item.querySelector('.color-box-picker');
+                picker.addEventListener('input', (e) => {
+                    paletteOverrides[origHex] = e.target.value.toUpperCase();
+                    drawCanvasOnly();
+                });
+                picker.addEventListener('change', () => {
+                    drawPreviewAndStats();
+                });
+                colorListDiv.appendChild(item);
+            });
+            exportBtn.disabled = totalActive === 0;
+        }
+
+        function fastExportGridSTL() {
+            if (!lastProcessedData) return;
+            const { cols, rows, pSize, activeMap } = lastProcessedData;
+            const gridW = parseFloat(document.getElementById('grid-width').value) || 1.0;
+            const baseThick = pSize;    
+            const pitch = pSize + gridW; 
+            let stlText = "solid flood_character_mesh\n";
+            function writeBox(x1, y1, z1, x2, y2, z2) {
+                const xa = Math.min(x1, x2), xb = Math.max(x1, x2);
+                const ya = Math.min(y1, y2), yb = Math.max(y1, y2);
+                const za = Math.min(z1, z2), zb = Math.max(z1, z2);
+                const p = [
+                    [xa, ya, za], [xb, ya, za], [xb, yb, za], [xa, yb, za],
+                    [xa, ya, zb], [xb, ya, zb], [xb, yb, zb], [xa, yb, zb]
+                ];
+                const faces = [
+                    [0,2,1], [0,3,2], [4,5,6], [4,6,7],
+                    [0,1,5], [0,5,4], [1,2,6], [1,6,5],
+                    [2,3,7], [2,7,6], [3,0,4], [3,4,7]
+                ];
+                for(let f of faces) {
+                    stlText += `  facet normal 0 0 0\n    outer loop\n`;
+                    stlText += `      vertex ${p[f[0]][0].toFixed(3)} ${p[f[0]][1].toFixed(3)} ${p[f[0]][2].toFixed(3)}\n`;
+                    stlText += `      vertex ${p[f[1]][0].toFixed(3)} ${p[f[1]][1].toFixed(3)} ${p[f[1]][2].toFixed(3)}\n`;
+                    stlText += `      vertex ${p[f[2]][0].toFixed(3)} ${p[f[2]][1].toFixed(3)} ${p[f[2]][2].toFixed(3)}\n`;
+                    stlText += `    endloop\n  endfacet\n`;
+                }
+            }
+            const isActive = (r, c) => {
+                if (r < 0 || r >= rows || c < 0 || c >= cols) return false;
+                return !!activeMap[r][c];
+            };
+            for (let r = 0; r <= rows; r++) {
+                for (let c = 0; c <= cols; c++) {
+                    if (isActive(r-1, c-1) || isActive(r-1, c) || isActive(r, c-1) || isActive(r, c)) {
+                        writeBox(c * pitch, -r * pitch, 0, c * pitch + gridW, -r * pitch - gridW, baseThick);
+                    }
+                }
+            }
+            for (let r = 0; r <= rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (isActive(r-1, c) || isActive(r, c)) {
+                        writeBox(c * pitch + gridW, -r * pitch, 0, (c + 1) * pitch, -r * pitch - gridW, baseThick);
+                    }
+                }
+            }
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c <= cols; c++) {
+                    if (isActive(r, c-1) || isActive(r, c)) {
+                        writeBox(c * pitch, -r * pitch - gridW, 0, c * pitch + gridW, -(r + 1) * pitch, baseThick);
+                    }
+                }
+            }
+            stlText += "endsolid flood_character_mesh\n";
+            const blob = new Blob([stlText], { type: 'text/plain' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `智能定制完美直角网格_精准内径${pSize}mm_${cols}x${rows}.stl`;
+            link.click();
+        }
+
+        // ========== 侧边栏逻辑 ==========
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedName = localStorage.getItem('siteName') || 'Leo的百宝箱';
+            document.getElementById('siteTitle').textContent = savedName;
+
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarItems = document.querySelectorAll('.sidebar-item span');
+            const siteTitle = document.getElementById('siteTitle');
+
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (isCollapsed) {
+                sidebar.classList.add('w-16');
+                sidebar.classList.remove('w-64');
+                sidebarItems.forEach(item => item.classList.add('hidden'));
+                if (siteTitle) siteTitle.classList.add('hidden');
+                const icon = sidebarToggle.querySelector('i');
+                if (icon) { icon.classList.remove('fa-angle-left'); icon.classList.add('fa-angle-right'); }
+            }
+
+            sidebarToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('w-64');
+                sidebar.classList.toggle('w-16');
+                sidebarItems.forEach(item => item.classList.toggle('hidden'));
+                if (siteTitle) siteTitle.classList.toggle('hidden');
+                const icon = sidebarToggle.querySelector('i');
+                if (icon) { icon.classList.toggle('fa-angle-left'); icon.classList.add('fa-angle-right'); }
+                localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('w-16'));
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+{
+  "suppliers": [
+    {
+      "_id": "sup001",
+      "name": "今喜",
+      "contact": "郑强",
+      "phone": "13549213563",
+      "email": "274898490@qq.com",
+      "address": "Dongguan, Guangdong",
+      "notes": "Main PLA supplier",
+      "createdAt": "2026-04-01T16:00:00.000Z",
+      "updatedAt": "2026-05-09T12:57:20.472Z"
+    },
+    {
+      "_id": "sup003",
+      "name": "瓦力增材",
+      "contact": "郑强",
+      "phone": "13549213563",
+      "email": "274898490@qq.com",
+      "address": "Linyi, Shandong",
+      "notes": "Professional 3D printing materials",
+      "createdAt": "2026-04-01T16:00:00.000Z",
+      "updatedAt": "2026-05-09T12:58:12.885Z"
+    },
+    {
+      "_id": "movmu58l94oges5ow",
+      "name": "BambuLab",
+      "contact": "Zhong",
+      "phone": "12312313",
+      "email": "274898490@qq.com",
+      "address": "",
+      "notes": "",
+      "createdAt": "2026-05-07T15:19:55.653Z",
+      "updatedAt": "2026-05-07T15:50:33.584Z"
+    }
+  ]
+}

@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>打印费用预估 - 3D打印耗材管理系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/theme.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#f57c00',
+                        secondary: '#fff3e0',
+                        dark: '#212121',
+                        gray: {
+                            100: '#f5f5f5',
+                            200: '#eeeeee',
+                            300: '#f0f0f0',
+                            500: '#666666',
+                            700: '#999999'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            height: 56px;
+            padding: 0 16px;
+            color: #6B7280;
+            transition: background-color 0.2s;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            margin-left: 8px;
+            margin-right: 8px;
+        }
+        .sidebar-item:hover {
+            background-color: #E5E7EB;
+        }
+        .sidebar-active {
+            background-color: #F97316 !important;
+            color: white !important;
+            border-left: 4px solid #EA580C;
+        }
+        .btn-primary {
+            @apply bg-primary text-white px-4 py-2 rounded-md hover:bg-opacity-90 transition-colors;
+        }
+        .btn-outline {
+            @apply border border-gray-300 text-gray-600 px-4 py-2 rounded-md hover:bg-gray-100 transition-colors;
+        }
+        .no-spin-button::-webkit-inner-spin-button,
+        .no-spin-button::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .no-spin-button {
+            -moz-appearance: textfield;
+        }
+    </style>
+    <script>
+        (function() {
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (isCollapsed) {
+                document.write('<style id="sidebar-init-style">body { visibility: hidden; }</style>');
+                document.addEventListener('DOMContentLoaded', function() {
+                    const sidebar = document.getElementById('sidebar');
+                    const sidebarItems = document.querySelectorAll('.sidebar-item span');
+                    const siteTitle = document.getElementById('siteTitle');
+                    const sidebarToggle = document.getElementById('sidebarToggle');
+                    
+                    sidebar.classList.remove('w-64');
+                    sidebar.classList.add('w-16');
+                    sidebarItems.forEach(item => item.classList.add('hidden'));
+                    if (siteTitle) siteTitle.classList.add('hidden');
+                    const icon = sidebarToggle.querySelector('i');
+                    if (icon) {
+                        icon.classList.remove('fa-angle-left');
+                        icon.classList.add('fa-angle-right');
+                    }
+                    
+                    document.getElementById('sidebar-init-style').remove();
+                    document.body.style.visibility = 'visible';
+                });
+            }
+        })();
+    </script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="flex h-screen overflow-hidden">
+        <aside id="sidebar" class="w-64 bg-white border-r border-gray-200 flex flex-col transition-all duration-300">
+            <a href="index.html" class="px-4 py-4 flex items-center hover:bg-gray-100 transition-colors cursor-pointer">
+                <div class="w-10 h-10 bg-primary rounded-md flex items-center justify-center text-white">
+                    <i class="fa fa-cube"></i>
+                </div>
+                <h1 id="siteTitle" class="ml-3 text-lg font-bold text-dark"></h1>
+            </a>
+
+            <nav class="flex-1 overflow-y-auto">
+                <ul>
+                    <li>
+                        <a href="index.html" class="sidebar-item">
+                            <i class="fa fa-home w-5 mr-3"></i>
+                            <span>主页</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="filament.html" class="sidebar-item">
+                            <i class="fa fa-paint-brush w-5 mr-3"></i>
+                            <span>耗材</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="supplier.html" class="sidebar-item">
+                            <i class="fa fa-truck w-5 mr-3"></i>
+                            <span>供应商</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="calculator.html" class="sidebar-item sidebar-active">
+                            <i class="fa fa-calculator w-5 mr-3"></i>
+                            <span>费用预估</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="expense.html" class="sidebar-item">
+                            <i class="fa fa-bar-chart w-5 mr-3"></i>
+                            <span>花费统计</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="sales.html" class="sidebar-item">
+                            <i class="fa fa-line-chart w-5 mr-3"></i>
+                            <span>销售情况</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="inventory.html" class="sidebar-item">
+                            <i class="fa fa-database w-5 mr-3"></i>
+                            <span>库存管理</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="qiaodoudou.html" class="sidebar-item">
+                            <i class="fa fa-th w-5 mr-3"></i>
+                            <span>敲豆豆</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="px-4 py-3 border-t border-gray-200">
+                <button id="sidebarToggle" class="w-full flex items-center justify-center text-gray-500 hover:text-primary transition-colors">
+                    <i class="fa fa-angle-left"></i>
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <div class="bg-white border-b border-gray-200 p-4 flex justify-end items-center h-20"></div>
+
+            <div class="flex-1 overflow-y-auto p-6">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-dark">打印费用预估</h2>
+                    <p class="text-gray-500 mt-1">根据参数计算3D打印费用</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-lg shadow-sm p-6 relative" style="min-height: 360px;">
+                        <h3 class="text-lg font-semibold text-dark mb-4">计算参数</h3>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">材料类型</label>
+                            <select id="materialType" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+                                <option value="PLA">PLA</option>
+                                <option value="PETG">PETG</option>
+                                <option value="ABS">ABS</option>
+                                <option value="TPU">TPU</option>
+                                <option value="ASA">ASA</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">材料重量 (g)</label>
+                            <input type="number" id="materialWeight" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary no-spin-button" placeholder="例如: 50" value="50">
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">打印时长 (小时)</label>
+                            <input type="number" id="printTime" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary no-spin-button" placeholder="例如: 5" value="5" step="0.1">
+                        </div>
+
+                        <div class="absolute bottom-12 left-1/2 transform -translate-x-1/2">
+                            <button onclick="calculatePrice()" class="btn-primary flex items-center justify-center px-8">
+                                <i class="fa fa-calculator mr-2"></i>
+                                计算费用
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div class="bg-white rounded-lg shadow-sm p-6">
+                            <h3 class="text-lg font-semibold text-dark mb-4">费用明细</h3>
+
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                                    <span class="text-gray-600">材料成本</span>
+                                    <span id="materialCost" class="font-semibold text-dark">¥0.00</span>
+                                </div>
+                                <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                                    <span class="text-gray-600">打印时长成本</span>
+                                    <span id="timeCost" class="font-semibold text-dark">¥0.00</span>
+                                </div>
+                                <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                                    <span class="text-gray-600">电费损耗</span>
+                                    <span id="electricityCost" class="font-semibold text-dark">¥0.00</span>
+                                </div>
+                                <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                                    <span class="text-gray-600">基础费用</span>
+                                    <span id="baseCost" class="font-semibold text-dark">¥0.00</span>
+                                </div>
+                                <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                                    <span class="text-gray-600">小计</span>
+                                    <span id="subtotal" class="font-semibold text-dark">¥0.00</span>
+                                </div>
+                                <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                                    <span class="text-gray-600">利润率</span>
+                                    <span id="markupRate" class="font-semibold text-dark">150%</span>
+                                </div>
+                                <div class="flex justify-between items-center py-3 bg-secondary rounded-lg px-3">
+                                    <span class="font-semibold text-primary text-lg">预估报价</span>
+                                    <span id="totalPrice" class="font-bold text-primary text-2xl">¥0.00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-6 mt-6">
+                    <h3 class="text-lg font-semibold text-dark mb-4">历史预估记录</h3>
+                    <div id="historyList" class="space-y-2">
+                        <p class="text-gray-500 text-center py-4">暂无历史记录</p>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="bg-white border-t border-gray-200 p-4 flex justify-center items-center">
+                <div class="text-xs text-gray-700">版本 1.0.1</div>
+            </footer>
+        </main>
+
+            <button id="settingsBtn" class="fixed bottom-4 right-4 w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white shadow-md hover:bg-opacity-90 transition-colors z-40">
+                <i class="fa fa-gear"></i>
+            </button>
+
+            <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-dark">设置</h3>
+                        <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+                            <i class="fa fa-times text-xl"></i>
+                        </button>
+                    </div>
+
+                    <div class="mb-6">
+                        <h4 class="text-sm font-medium text-gray-700 mb-3 border-b pb-2">价格公式设置</h4>
+                        <div class="space-y-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs text-gray-600 mb-1">PLA 材料成本 (元/克)</label>
+                                    <input type="number" id="costPLA" step="0.001" class="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary" value="0.05">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-600 mb-1">PETG 材料成本 (元/克)</label>
+                                    <input type="number" id="costPETG" step="0.001" class="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary" value="0.06">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-600 mb-1">ABS 材料成本 (元/克)</label>
+                                    <input type="number" id="costABS" step="0.001" class="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary" value="0.055">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-600 mb-1">TPU 材料成本 (元/克)</label>
+                                    <input type="number" id="costTPU" step="0.001" class="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary" value="0.08">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-600 mb-1">ASA 材料成本 (元/克)</label>
+                                    <input type="number" id="costASA" step="0.001" class="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary" value="0.075">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-600 mb-1">每小时费率 (元/小时)</label>
+                                    <input type="number" id="hourlyRate" step="0.1" class="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary" value="10">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-600 mb-1">电费系数 (元/小时)</label>
+                                    <input type="number" id="electricityRate" step="0.1" class="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary" value="1.5">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-600 mb-1">基础费用 (元)</label>
+                                    <input type="number" id="baseFee" step="0.1" class="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary" value="5">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-600 mb-1">利润率 (%)</label>
+                                    <input type="number" id="markup" step="1" class="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary" value="150">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">主题设置</label>
+                        <button type="button" class="theme-toggle-btn w-full flex items-center justify-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:opacity-90 transition-opacity">
+                            <i class="fa fa-moon-o mr-2"></i>深色模式
+                        </button>
+                    </div>
+                    
+                    <div class="flex justify-end">
+                        <button id="saveSettings" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-colors">
+                            保存设置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="historyModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-lg mx-4">
+            <div class="flex justify-between items-center p-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-dark">预估详情</h3>
+                <button onclick="closeHistoryModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <div id="historyDetail" class="p-4">
+            </div>
+        </div>
+    </div>
+    <div id="messageModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-sm mx-4">
+            <div class="flex justify-between items-center p-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-dark">提示</h3>
+                <button onclick="closeMessageModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <div class="p-4">
+                <p id="messageContent" class="text-gray-700"></p>
+            </div>
+            <div class="flex justify-end p-4 border-t border-gray-200">
+                <button onclick="closeMessageModal()" class="px-6 py-2 bg-primary text-white rounded-lg font-medium hover:bg-opacity-90 transition-colors">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="settings.js"></script>
+    <script>
+        const API_BASE_URL = '/api';
+        let priceFormulas = {};
+        let calculationHistory = [];
+
+        async function loadFormulas() {
+            const savedFormulas = localStorage.getItem('priceFormulas');
+            if (savedFormulas) {
+                priceFormulas = JSON.parse(savedFormulas);
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/price-formulas`);
+                const data = await response.json();
+                if (data.success && data.data) {
+                    priceFormulas = data.data;
+                    localStorage.setItem('priceFormulas', JSON.stringify(data.data));
+                }
+            } catch (error) {
+                console.error('加载公式失败:', error);
+            }
+        }
+
+        function updatePriceDisplay() {
+            const materialType = document.getElementById('materialType').value;
+            const materialWeight = parseFloat(document.getElementById('materialWeight').value) || 0;
+            const printTime = parseFloat(document.getElementById('printTime').value) || 0;
+
+            const costs = priceFormulas.materialCosts || {};
+            const materialCostPerGram = costs[materialType] || 0.05;
+
+            const materialCost = materialWeight * materialCostPerGram;
+            const timeCost = printTime * (priceFormulas.hourlyRate || 10);
+            const electricityCost = printTime * (priceFormulas.electricityRate || 1.5);
+            const baseCost = priceFormulas.baseFee || 5;
+
+            const subtotal = materialCost + timeCost + electricityCost + baseCost;
+            const markup = priceFormulas.markup || 1.5;
+            const totalPrice = subtotal * markup;
+
+            document.getElementById('materialCost').textContent = `¥${materialCost.toFixed(2)}`;
+            document.getElementById('timeCost').textContent = `¥${timeCost.toFixed(2)}`;
+            document.getElementById('electricityCost').textContent = `¥${electricityCost.toFixed(2)}`;
+            document.getElementById('baseCost').textContent = `¥${baseCost.toFixed(2)}`;
+            document.getElementById('subtotal').textContent = `¥${subtotal.toFixed(2)}`;
+            document.getElementById('totalPrice').textContent = `¥${totalPrice.toFixed(2)}`;
+        }
+
+        function calculatePrice() {
+            updatePriceDisplay();
+
+            const materialType = document.getElementById('materialType').value;
+            const materialWeight = parseFloat(document.getElementById('materialWeight').value) || 0;
+            const printTime = parseFloat(document.getElementById('printTime').value) || 0;
+
+            const costs = priceFormulas.materialCosts || {};
+            const materialCostPerGram = costs[materialType] || 0.05;
+
+            const materialCost = materialWeight * materialCostPerGram;
+            const timeCost = printTime * (priceFormulas.hourlyRate || 10);
+            const electricityCost = printTime * (priceFormulas.electricityRate || 1.5);
+            const baseCost = priceFormulas.baseFee || 5;
+
+            const subtotal = materialCost + timeCost + electricityCost + baseCost;
+            const markup = priceFormulas.markup || 1.5;
+            const totalPrice = subtotal * markup;
+
+            const record = {
+                timestamp: new Date().toISOString(),
+                materialType,
+                materialWeight,
+                printTime,
+                materialCost,
+                timeCost,
+                electricityCost,
+                baseCost,
+                subtotal,
+                markup,
+                totalPrice
+            };
+
+            calculationHistory.unshift(record);
+            if (calculationHistory.length > 10) {
+                calculationHistory.pop();
+            }
+
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('historyList');
+
+            if (calculationHistory.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">暂无历史记录</p>';
+                return;
+            }
+
+            container.innerHTML = calculationHistory.map((record, index) => `
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors" onclick="showHistoryDetail(${index})">
+                    <div>
+                        <span class="font-medium text-dark">${record.materialType}</span>
+                        <span class="text-gray-500 text-sm ml-2">${record.materialWeight}g / ${record.printTime}h</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="font-semibold text-primary">¥${record.totalPrice.toFixed(2)}</span>
+                        <span class="text-gray-400 text-xs block">${new Date(record.timestamp).toLocaleString('zh-CN')}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showHistoryDetail(index) {
+            const record = calculationHistory[index];
+            const detail = document.getElementById('historyDetail');
+
+            detail.innerHTML = `
+                <div class="space-y-3">
+                    <div class="flex justify-between py-2 border-b">
+                        <span class="text-gray-600">材料类型:</span>
+                        <span class="font-medium">${record.materialType}</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b">
+                        <span class="text-gray-600">材料重量:</span>
+                        <span class="font-medium">${record.materialWeight}g</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b">
+                        <span class="text-gray-600">打印时长:</span>
+                        <span class="font-medium">${record.printTime}h</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b">
+                        <span class="text-gray-600">材料成本:</span>
+                        <span class="font-medium">¥${record.materialCost.toFixed(2)}</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b">
+                        <span class="text-gray-600">时间成本:</span>
+                        <span class="font-medium">¥${record.timeCost.toFixed(2)}</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b">
+                        <span class="text-gray-600">电费:</span>
+                        <span class="font-medium">¥${record.electricityCost.toFixed(2)}</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b">
+                        <span class="text-gray-600">基础费用:</span>
+                        <span class="font-medium">¥${record.baseCost.toFixed(2)}</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b">
+                        <span class="text-gray-600">小计:</span>
+                        <span class="font-medium">¥${record.subtotal.toFixed(2)}</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b">
+                        <span class="text-gray-600">利润率:</span>
+                        <span class="font-medium">${record.markup * 100}%</span>
+                    </div>
+                    <div class="flex justify-between py-3 bg-secondary rounded-lg px-3 mt-2">
+                        <span class="font-semibold text-primary">预估报价:</span>
+                        <span class="font-bold text-primary text-xl">¥${record.totalPrice.toFixed(2)}</span>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('historyModal').classList.remove('hidden');
+            document.getElementById('historyModal').classList.add('flex');
+        }
+
+        function closeHistoryModal() {
+            document.getElementById('historyModal').classList.add('hidden');
+            document.getElementById('historyModal').classList.remove('flex');
+        }
+
+        function showMessage(message) {
+            document.getElementById('messageContent').textContent = message;
+            document.getElementById('messageModal').classList.remove('hidden');
+            document.getElementById('messageModal').classList.add('flex');
+        }
+
+        function closeMessageModal() {
+            document.getElementById('messageModal').classList.add('hidden');
+            document.getElementById('messageModal').classList.remove('flex');
+        }
+
+        function resetForm() {
+            document.getElementById('materialWeight').value = 50;
+            document.getElementById('printTime').value = 5;
+            calculatePrice();
+        }
+
+        function updateSiteName() {
+            const siteTitle = document.getElementById('siteTitle');
+            const savedName = localStorage.getItem('siteName') || 'Leo的百宝箱';
+            siteTitle.textContent = savedName;
+        }
+
+        function initSidebarToggle() {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarItems = document.querySelectorAll('.sidebar-item span');
+            const siteTitle = document.getElementById('siteTitle');
+            
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (isCollapsed) {
+                sidebar.classList.add('w-16');
+                sidebar.classList.remove('w-64');
+                sidebarItems.forEach(item => item.classList.add('hidden'));
+                if (siteTitle) siteTitle.classList.add('hidden');
+                const icon = sidebarToggle.querySelector('i');
+                if (icon) {
+                    icon.classList.remove('fa-angle-left');
+                    icon.classList.add('fa-angle-right');
+                }
+            }
+            
+            sidebarToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('w-64');
+                sidebar.classList.toggle('w-16');
+                
+                sidebarItems.forEach(item => {
+                    item.classList.toggle('hidden');
+                });
+                
+                if (siteTitle) {
+                    siteTitle.classList.toggle('hidden');
+                }
+                
+                const icon = sidebarToggle.querySelector('i');
+                if (icon) {
+                    icon.classList.toggle('fa-angle-left');
+                    icon.classList.toggle('fa-angle-right');
+                }
+                
+                localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('w-16'));
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            initPageSettings();
+            updateSiteName();
+            loadFormulas();
+            initSidebarToggle();
+
+            document.getElementById('materialType').addEventListener('change', updatePriceDisplay);
+            document.getElementById('materialWeight').addEventListener('input', updatePriceDisplay);
+            document.getElementById('printTime').addEventListener('input', updatePriceDisplay);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>耗材库存 - 3D打印耗材管理系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#f57c00',
+                        dark: '#212121'
+                    }
+                }
+            }
+        }
+    </script>
+    <script>
+        (function() {
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (isCollapsed) {
+                document.write('<style id="sidebar-init-style">body { visibility: hidden; }</style>');
+                document.addEventListener('DOMContentLoaded', function() {
+                    const sidebar = document.getElementById('sidebar');
+                    const sidebarItems = document.querySelectorAll('.sidebar-item span');
+                    const siteTitle = document.getElementById('siteTitle');
+                    const sidebarToggle = document.getElementById('sidebarToggle');
+                    
+                    sidebar.classList.remove('w-64');
+                    sidebar.classList.add('w-16');
+                    sidebarItems.forEach(item => item.classList.add('hidden'));
+                    if (siteTitle) siteTitle.classList.add('hidden');
+                    const icon = sidebarToggle.querySelector('i');
+                    if (icon) {
+                        icon.classList.remove('fa-angle-left');
+                        icon.classList.add('fa-angle-right');
+                    }
+                    
+                    document.getElementById('sidebar-init-style').remove();
+                    document.body.style.visibility = 'visible';
+                });
+            }
+        })();
+    </script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="flex h-screen overflow-hidden">
+        <!-- 侧边栏 -->
+        <aside id="sidebar" class="w-64 bg-white border-r border-gray-200 flex flex-col transition-all duration-300">
+            <a href="index.html" class="px-4 py-4 flex items-center hover:bg-gray-100 transition-colors cursor-pointer">
+                <div class="w-10 h-10 bg-primary rounded-md flex items-center justify-center text-white">
+                    <i class="fa fa-cube"></i>
+                </div>
+                <h1 id="siteTitle" class="ml-3 text-lg font-bold text-dark"></h1>
+            </a>
+            
+            <nav class="flex-1 overflow-y-auto">
+                <ul>
+                    <li><a href="index.html" class="sidebar-item"><i class="fa fa-home w-5 mr-3"></i><span>主页</span></a></li>
+                    <li><a href="filament.html" class="sidebar-item"><i class="fa fa-paint-brush w-5 mr-3"></i><span>耗材</span></a></li>
+                    <li><a href="supplier.html" class="sidebar-item"><i class="fa fa-truck w-5 mr-3"></i><span>供应商</span></a></li>
+                    <li><a href="calculator.html" class="sidebar-item"><i class="fa fa-calculator w-5 mr-3"></i><span>费用预估</span></a></li>
+                    <li><a href="expense.html" class="sidebar-item"><i class="fa fa-bar-chart w-5 mr-3"></i><span>花费统计</span></a></li>
+                    <li><a href="sales.html" class="sidebar-item"><i class="fa fa-line-chart w-5 mr-3"></i><span>销售情况</span></a></li>
+                    <li><a href="inventory.html" class="sidebar-item sidebar-active"><i class="fa fa-database w-5 mr-3"></i><span>库存管理</span></a></li>
+                    <li><a href="qiaodoudou.html" class="sidebar-item"><i class="fa fa-th w-5 mr-3"></i><span>敲豆豆</span></a></li>
+                </ul>
+            </nav>
+            
+            <div class="px-4 py-3 border-t border-gray-200">
+                <button id="sidebarToggle" class="w-full flex items-center justify-center text-gray-500 hover:text-primary transition-colors">
+                    <i class="fa fa-angle-left"></i>
+                </button>
+            </div>
+        </aside>
+        
+        <!-- 主内容区 -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <div class="bg-white border-b border-gray-200 p-4 flex justify-between items-center h-20">
+                <h2 class="text-xl font-bold text-dark">耗材库存管理</h2>
+                <div class="flex items-center gap-3">
+                    <input type="file" id="excelInput" accept=".xlsx,.xls" class="hidden">
+                    <button onclick="openOrderModal()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+                        <i class="fa fa-shopping-cart"></i>
+                        <span>订单确认</span>
+                    </button>
+                    <button onclick="document.getElementById('excelInput').click()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-colors flex items-center gap-2">
+                        <i class="fa fa-upload"></i>
+                        <span>导入Excel</span>
+                    </button>
+                    <button onclick="exportInventory()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-2">
+                        <i class="fa fa-download"></i>
+                        <span>导出</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-6">
+                <!-- 统计卡片 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <i class="fa fa-cubes text-blue-500 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="text-sm text-gray-500 mb-1">总SKU数</div>
+                        <div id="totalSKU" class="text-3xl font-bold text-dark">0</div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                <i class="fa fa-check-circle text-green-500 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="text-sm text-gray-500 mb-1">库存充足</div>
+                        <div id="stockOK" class="text-3xl font-bold text-green-600">0</div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                <i class="fa fa-exclamation-circle text-yellow-500 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="text-sm text-gray-500 mb-1">库存紧张</div>
+                        <div id="stockLow" class="text-3xl font-bold text-yellow-600">0</div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                                <i class="fa fa-times-circle text-red-500 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="text-sm text-gray-500 mb-1">缺货/负库存</div>
+                        <div id="stockOut" class="text-3xl font-bold text-red-600">0</div>
+                    </div>
+                </div>
+                
+                <!-- 分类筛选 -->
+                <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                    <div class="flex items-center gap-4 flex-wrap">
+                        <span class="text-sm font-medium text-gray-700">筛选分类:</span>
+                        <div id="categoryFilters" class="flex gap-2 flex-wrap">
+                            <button class="px-3 py-1 rounded-full text-sm bg-primary text-white" data-category="all">全部</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 库存列表 -->
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+                        <h3 class="text-lg font-semibold text-dark">库存明细</h3>
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="searchInput" placeholder="搜索商品名称..." class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                            <select id="stockFilter" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                                <option value="all">全部状态</option>
+                                <option value="ok">库存充足</option>
+                                <option value="low">库存紧张</option>
+                                <option value="out">缺货</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">商品名称</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">分类</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">库存数量</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">库存条</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventoryTable" class="divide-y divide-gray-200">
+                                <tr>
+                                    <td colspan="5" class="px-4 py-8 text-center text-gray-500">
+                                        <i class="fa fa-inbox text-4xl mb-2"></i>
+                                        <p>暂无库存数据，请导入Excel文件</p>
+                                        <p class="text-xs text-gray-400 mt-1">支持 .xlsx 格式，需包含：商品名称、商品分类、库存数量 三列</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- 分类统计图表 -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h3 class="text-lg font-semibold text-dark mb-4">分类库存分布</h3>
+                        <div id="categoryChart" class="space-y-3">
+                            <div class="text-center text-gray-500 py-8">暂无数据</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h3 class="text-lg font-semibold text-dark mb-4">库存状态分布</h3>
+                        <div class="flex items-center justify-center">
+                            <div id="statusPieChart" class="relative" style="width: 200px; height: 200px;">
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <span class="text-sm font-bold text-gray-500">暂无数据</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="statusLegend" class="mt-4 flex justify-center gap-4 flex-wrap"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <footer class="bg-white border-t border-gray-200 p-4 flex justify-center items-center">
+                <div class="text-xs text-gray-700">版本 1.0.1</div>
+            </footer>
+        </main>
+        
+        <button id="settingsBtn" onclick="openSettingsModal()" class="fixed bottom-4 right-4 w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white shadow-md hover:bg-opacity-90 transition-colors">
+            <i class="fa fa-gear"></i>
+        </button>
+    </div>
+
+    <!-- 订单确认弹窗 -->
+    <div id="orderModal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-50" onclick="closeOrderModal()"></div>
+        <div class="absolute inset-4 md:inset-10 lg:inset-16 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            <!-- 弹窗头部 -->
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
+                <h3 class="text-lg font-bold text-dark">订单确认</h3>
+                <button onclick="closeOrderModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <!-- 弹窗内容 -->
+            <div class="flex-1 overflow-y-auto p-6">
+                <div class="mb-4 text-sm text-gray-500">
+                    <i class="fa fa-info-circle mr-1"></i>
+                    输入商品名称关键词搜索库存，填写所需数量后点击"库存校验"
+                </div>
+                
+                <!-- 订单行列表 -->
+                <div id="orderRows" class="space-y-3">
+                    <!-- 动态生成 -->
+                </div>
+                
+                <!-- 添加行按钮 -->
+                <button onclick="addOrderRow()" class="mt-3 px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-primary hover:text-primary transition-colors flex items-center gap-2 w-full justify-center">
+                    <i class="fa fa-plus"></i>
+                    <span>添加一行</span>
+                </button>
+                
+                <!-- 校验结果 -->
+                <div id="orderCheckResult" class="hidden mt-6">
+                    <h4 class="text-md font-semibold text-dark mb-3 flex items-center gap-2">
+                        <i class="fa fa-check-double"></i>
+                        库存校验结果
+                    </h4>
+                    <div id="orderCheckContent"></div>
+                </div>
+            </div>
+            
+            <!-- 弹窗底部 -->
+            <div class="px-6 py-4 border-t border-gray-200 flex justify-end items-center gap-3 flex-shrink-0">
+                <button onclick="closeOrderModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+                    取消
+                </button>
+                <button onclick="checkOrderStock()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-colors flex items-center gap-2">
+                    <i class="fa fa-search"></i>
+                    <span>库存校验</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置弹窗 -->
+    <div id="settingsModal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-50" onclick="closeSettingsModal()"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 bg-white rounded-xl shadow-2xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-dark">设置</h3>
+                <button onclick="closeSettingsModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                            <i class="fa fa-trash text-red-500"></i>
+                        </div>
+                        <div>
+                            <div class="text-sm font-medium text-dark">清空库存数据</div>
+                            <div class="text-xs text-gray-500">删除所有已导入的库存记录</div>
+                        </div>
+                    </div>
+                    <button onclick="openClearConfirmModal()" class="px-3 py-1.5 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition-colors">
+                        清空
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 清空确认弹窗 -->
+    <div id="clearConfirmModal" class="fixed inset-0 z-[60] hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 bg-white rounded-xl shadow-2xl overflow-hidden">
+            <div class="p-6 text-center">
+                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fa fa-exclamation-triangle text-red-500 text-2xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-dark mb-2">确认清空数据？</h3>
+                <p class="text-sm text-gray-500 mb-6">此操作将永久删除所有库存数据，无法恢复。</p>
+                <div class="flex gap-3">
+                    <button onclick="closeClearConfirmModal()" class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+                        取消
+                    </button>
+                    <button onclick="confirmClearData()" class="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">
+                        确认清空
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/utils.js"></script>
+    <script src="js/theme.js"></script>
+    <script>
+        let inventoryData = [];
+        let currentFilter = 'all';
+        let currentCategory = 'all';
+        
+        // 从 localStorage 加载数据
+        function loadInventoryData() {
+            const saved = localStorage.getItem('inventoryData');
+            if (saved) {
+                inventoryData = JSON.parse(saved);
+                renderInventory();
+            }
+        }
+        
+        // 保存到 localStorage
+        function saveInventoryData() {
+            localStorage.setItem('inventoryData', JSON.stringify(inventoryData));
+        }
+        
+        // Excel 导入
+        document.getElementById('excelInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                    
+                    if (jsonData.length < 2) {
+                        alert('Excel 文件数据为空');
+                        return;
+                    }
+                    
+                    // 解析表头
+                    const headers = jsonData[0];
+                    const nameIdx = headers.findIndex(h => h && h.toString().includes('商品名称'));
+                    const categoryIdx = headers.findIndex(h => h && h.toString().includes('商品分类'));
+                    const qtyIdx = headers.findIndex(h => h && h.toString().includes('库存数量'));
+                    
+                    if (nameIdx === -1 || categoryIdx === -1 || qtyIdx === -1) {
+                        alert('Excel 格式不正确，需要包含：商品名称、商品分类、库存数量 三列');
+                        return;
+                    }
+                    
+                    // 解析数据
+                    inventoryData = [];
+                    for (let i = 1; i < jsonData.length; i++) {
+                        const row = jsonData[i];
+                        if (row[nameIdx]) {
+                            inventoryData.push({
+                                name: row[nameIdx].toString().trim(),
+                                category: row[categoryIdx] ? row[categoryIdx].toString().trim() : '未分类',
+                                quantity: parseInt(row[qtyIdx]) || 0
+                            });
+                        }
+                    }
+                    
+                    saveInventoryData();
+                    renderInventory();
+                    alert(`成功导入 ${inventoryData.length} 条库存记录`);
+                } catch (error) {
+                    console.error('导入失败:', error);
+                    alert('导入失败: ' + error.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            
+            // 清空 input 以便重复导入同一文件
+            e.target.value = '';
+        });
+        
+        // 导出库存
+        function exportInventory() {
+            if (inventoryData.length === 0) {
+                alert('暂无数据可导出');
+                return;
+            }
+            
+            const exportData = inventoryData.map(item => ({
+                '商品名称': item.name,
+                '商品分类': item.category,
+                '库存数量': item.quantity
+            }));
+            
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '库存数据');
+            XLSX.writeFile(wb, `耗材库存_${new Date().toLocaleDateString('zh-CN')}.xlsx`);
+        }
+        
+        // 获取库存状态
+        function getStockStatus(quantity) {
+            if (quantity <= 0) return { label: '缺货', class: 'bg-red-100 text-red-700', color: '#ef4444', type: 'out' };
+            if (quantity < 20) return { label: '紧张', class: 'bg-yellow-100 text-yellow-700', color: '#eab308', type: 'low' };
+            return { label: '充足', class: 'bg-green-100 text-green-700', color: '#22c55e', type: 'ok' };
+        }
+        
+        // 渲染库存列表
+        function renderInventory() {
+            const filtered = inventoryData.filter(item => {
+                const status = getStockStatus(item.quantity);
+                const matchCategory = currentCategory === 'all' || item.category === currentCategory;
+                const matchStock = currentFilter === 'all' || status.type === currentFilter;
+                const matchSearch = !document.getElementById('searchInput').value || 
+                    item.name.toLowerCase().includes(document.getElementById('searchInput').value.toLowerCase());
+                return matchCategory && matchStock && matchSearch;
+            });
+            
+            // 更新统计
+            updateStats();
+            
+            // 渲染表格
+            const tbody = document.getElementById('inventoryTable');
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-4 py-8 text-center text-gray-500">
+                            没有找到匹配的数据
+                        </td>
+                    </tr>
+                `;
+            } else {
+                tbody.innerHTML = filtered.map(item => {
+                    const status = getStockStatus(item.quantity);
+                    const maxQty = Math.max(...inventoryData.map(i => i.quantity), 1);
+                    const barWidth = Math.min((item.quantity / maxQty) * 100, 100);
+                    
+                    return `
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-4 py-3 text-sm text-dark font-medium">${item.name}</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">
+                                <span class="inline-flex px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">${item.category}</span>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-right font-mono font-medium ${item.quantity <= 0 ? 'text-red-600' : item.quantity < 20 ? 'text-yellow-600' : 'text-green-600'}">${item.quantity}</td>
+                            <td class="px-4 py-3 text-center">
+                                <span class="inline-flex px-2 py-1 rounded-full text-xs font-medium ${status.class}">${status.label}</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                                    <div class="h-full rounded-full transition-all" style="width: ${barWidth}%; background-color: ${status.color}"></div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+            
+            // 渲染分类筛选按钮
+            renderCategoryFilters();
+            
+            // 渲染分类图表
+            renderCategoryChart();
+            
+            // 渲染状态饼图
+            renderStatusPieChart();
+        }
+        
+        // 更新统计
+        function updateStats() {
+            document.getElementById('totalSKU').textContent = inventoryData.length;
+            
+            const okCount = inventoryData.filter(i => getStockStatus(i.quantity).type === 'ok').length;
+            const lowCount = inventoryData.filter(i => getStockStatus(i.quantity).type === 'low').length;
+            const outCount = inventoryData.filter(i => getStockStatus(i.quantity).type === 'out').length;
+            
+            document.getElementById('stockOK').textContent = okCount;
+            document.getElementById('stockLow').textContent = lowCount;
+            document.getElementById('stockOut').textContent = outCount;
+        }
+        
+        // 渲染分类筛选按钮
+        function renderCategoryFilters() {
+            const categories = [...new Set(inventoryData.map(i => i.category))].sort();
+            const container = document.getElementById('categoryFilters');
+            
+            container.innerHTML = `
+                <button class="px-3 py-1 rounded-full text-sm ${currentCategory === 'all' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}" data-category="all">全部</button>
+                ${categories.map(cat => `
+                    <button class="px-3 py-1 rounded-full text-sm ${currentCategory === cat ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}" data-category="${cat}">${cat}</button>
+                `).join('')}
+            `;
+            
+            container.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    currentCategory = btn.dataset.category;
+                    renderInventory();
+                });
+            });
+        }
+        
+        // 渲染分类图表
+        function renderCategoryChart() {
+            const container = document.getElementById('categoryChart');
+            if (inventoryData.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-8">暂无数据</div>';
+                return;
+            }
+            
+            const categoryStats = {};
+            inventoryData.forEach(item => {
+                if (!categoryStats[item.category]) {
+                    categoryStats[item.category] = { total: 0, count: 0 };
+                }
+                categoryStats[item.category].total += item.quantity;
+                categoryStats[item.category].count += 1;
+            });
+            
+            const colors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+            const maxTotal = Math.max(...Object.values(categoryStats).map(s => s.total), 1);
+            
+            container.innerHTML = Object.entries(categoryStats).map(([cat, stats], index) => {
+                const color = colors[index % colors.length];
+                const percentage = (stats.total / maxTotal * 100).toFixed(0);
+                return `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center flex-1">
+                            <div class="w-3 h-3 rounded-full mr-2" style="background-color: ${color}"></div>
+                            <span class="text-sm text-dark">${cat}</span>
+                            <span class="text-xs text-gray-500 ml-2">(${stats.count}种)</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div class="h-full rounded-full" style="width: ${percentage}%; background-color: ${color}"></div>
+                            </div>
+                            <span class="text-sm text-gray-600 w-16 text-right">${stats.total}件</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // 渲染状态饼图
+        function renderStatusPieChart() {
+            const container = document.getElementById('statusPieChart');
+            const legend = document.getElementById('statusLegend');
+            
+            if (inventoryData.length === 0) {
+                container.innerHTML = '<div class="absolute inset-0 flex items-center justify-center"><span class="text-sm font-bold text-gray-500">暂无数据</span></div>';
+                legend.innerHTML = '';
+                return;
+            }
+            
+            const okCount = inventoryData.filter(i => getStockStatus(i.quantity).type === 'ok').length;
+            const lowCount = inventoryData.filter(i => getStockStatus(i.quantity).type === 'low').length;
+            const outCount = inventoryData.filter(i => getStockStatus(i.quantity).type === 'out').length;
+            const total = inventoryData.length;
+            
+            const okPct = (okCount / total * 100).toFixed(1);
+            const lowPct = (lowCount / total * 100).toFixed(1);
+            const outPct = (outCount / total * 100).toFixed(1);
+            
+            const gradientParts = [];
+            let currentAngle = 0;
+            
+            if (okCount > 0) {
+                gradientParts.push(`#22c55e ${currentAngle}% ${currentAngle + parseFloat(okPct)}%`);
+                currentAngle += parseFloat(okPct);
+            }
+            if (lowCount > 0) {
+                gradientParts.push(`#eab308 ${currentAngle}% ${currentAngle + parseFloat(lowPct)}%`);
+                currentAngle += parseFloat(lowPct);
+            }
+            if (outCount > 0) {
+                gradientParts.push(`#ef4444 ${currentAngle}% ${currentAngle + parseFloat(outPct)}%`);
+            }
+            
+            container.innerHTML = `
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-dark">${total}</div>
+                        <div class="text-xs text-gray-500">总SKU</div>
+                    </div>
+                </div>
+            `;
+            container.style.background = `conic-gradient(${gradientParts.join(', ')})`;
+            container.style.borderRadius = '50%';
+            
+            legend.innerHTML = `
+                <div class="flex items-center gap-1"><div class="w-3 h-3 rounded-full bg-green-500"></div><span class="text-xs text-gray-600">充足 ${okCount} (${okPct}%)</span></div>
+                <div class="flex items-center gap-1"><div class="w-3 h-3 rounded-full bg-yellow-500"></div><span class="text-xs text-gray-600">紧张 ${lowCount} (${lowPct}%)</span></div>
+                <div class="flex items-center gap-1"><div class="w-3 h-3 rounded-full bg-red-500"></div><span class="text-xs text-gray-600">缺货 ${outCount} (${outPct}%)</span></div>
+            `;
+        }
+        
+        // 搜索和筛选事件
+        document.getElementById('searchInput').addEventListener('input', renderInventory);
+        document.getElementById('stockFilter').addEventListener('change', function() {
+            currentFilter = this.value;
+            renderInventory();
+        });
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadInventoryData();
+            initSidebarToggle();
+            
+            // 设置网站名称
+            const savedName = localStorage.getItem('siteName') || 'Leo的百宝箱';
+            document.getElementById('siteTitle').textContent = savedName;
+        });
+        
+        function initSidebarToggle() {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarItems = document.querySelectorAll('.sidebar-item span');
+            const siteTitle = document.getElementById('siteTitle');
+            
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (isCollapsed) {
+                sidebar.classList.add('w-16');
+                sidebar.classList.remove('w-64');
+                sidebarItems.forEach(item => item.classList.add('hidden'));
+                if (siteTitle) siteTitle.classList.add('hidden');
+                const icon = sidebarToggle.querySelector('i');
+                if (icon) {
+                    icon.classList.remove('fa-angle-left');
+                    icon.classList.add('fa-angle-right');
+                }
+            }
+            
+            sidebarToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('w-64');
+                sidebar.classList.toggle('w-16');
+                
+                sidebarItems.forEach(item => {
+                    item.classList.toggle('hidden');
+                });
+                
+                if (siteTitle) {
+                    siteTitle.classList.toggle('hidden');
+                }
+                
+                const icon = sidebarToggle.querySelector('i');
+                if (icon) {
+                    icon.classList.toggle('fa-angle-left');
+                    icon.classList.add('fa-angle-right');
+                }
+                
+                localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('w-16'));
+            });
+        }
+
+        // ========== 订单确认弹窗 ==========
+        let orderRowId = 0;
+
+        function openOrderModal() {
+            if (inventoryData.length === 0) {
+                alert('请先导入库存数据');
+                return;
+            }
+            document.getElementById('orderModal').classList.remove('hidden');
+            document.getElementById('orderCheckResult').classList.add('hidden');
+            document.getElementById('orderRows').innerHTML = '';
+            orderRowId = 0;
+            for (let i = 0; i < 5; i++) addOrderRow();
+        }
+
+        function closeOrderModal() {
+            document.getElementById('orderModal').classList.add('hidden');
+        }
+
+        function addOrderRow() {
+            orderRowId++;
+            const id = orderRowId;
+            const container = document.getElementById('orderRows');
+            const row = document.createElement('div');
+            row.id = `orderRow_${id}`;
+            row.className = 'flex items-center gap-2 order-row';
+            row.innerHTML = `
+                <div class="flex-1 relative">
+                    <input type="text" id="orderSearch_${id}" placeholder="输入颜色关键词搜索..." 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        oninput="showSuggestions(${id})" onfocus="showSuggestions(${id})">
+                    <div id="orderSuggestions_${id}" class="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto hidden"></div>
+                    <input type="hidden" id="orderItemId_${id}" value="">
+                </div>
+                <div class="w-24">
+                    <input type="number" id="orderQty_${id}" placeholder="数量" min="1" value="1"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary text-center">
+                </div>
+                <div class="w-20 text-center">
+                    <span id="orderStock_${id}" class="text-xs text-gray-400">-</span>
+                </div>
+                <button onclick="removeOrderRow(${id})" class="text-gray-400 hover:text-red-500 transition-colors p-1">
+                    <i class="fa fa-trash-o"></i>
+                </button>
+            `;
+            container.appendChild(row);
+        }
+
+        function removeOrderRow(id) {
+            const row = document.getElementById(`orderRow_${id}`);
+            if (row) row.remove();
+        }
+
+        function showSuggestions(id) {
+            const input = document.getElementById(`orderSearch_${id}`);
+            const sugBox = document.getElementById(`orderSuggestions_${id}`);
+            const keyword = input.value.trim().toLowerCase();
+
+            if (!keyword) {
+                sugBox.classList.add('hidden');
+                return;
+            }
+
+            const matches = inventoryData.filter(item =>
+                item.name.toLowerCase().includes(keyword) ||
+                item.category.toLowerCase().includes(keyword)
+            ).slice(0, 10);
+
+            if (matches.length === 0) {
+                sugBox.innerHTML = '<div class="px-3 py-2 text-sm text-gray-400">无匹配结果</div>';
+            } else {
+                sugBox.innerHTML = matches.map(item => {
+                    const status = getStockStatus(item.quantity);
+                    return `<div class="px-3 py-2 hover:bg-gray-100 cursor-pointer flex justify-between items-center text-sm" 
+                        onclick="selectItem(${id}, '${item.name.replace(/'/g, "\\'")}', ${item.quantity})">
+                        <div>
+                            <span class="text-dark">${item.name}</span>
+                            <span class="text-xs text-gray-400 ml-2">${item.category}</span>
+                        </div>
+                        <span class="text-xs font-medium ${status.class}">${status.label}(${item.quantity})</span>
+                    </div>`;
+                }).join('');
+            }
+            sugBox.classList.remove('hidden');
+        }
+
+        function selectItem(id, name, stock) {
+            document.getElementById(`orderSearch_${id}`).value = name;
+            document.getElementById(`orderItemId_${id}`).value = name;
+            document.getElementById(`orderStock_${id}`).innerHTML = `库存: <span class="${stock > 0 ? 'text-green-600' : 'text-red-600'} font-medium">${stock}</span>`;
+            document.getElementById(`orderSuggestions_${id}`).classList.add('hidden');
+        }
+
+        // 点击外部关闭搜索建议
+        document.addEventListener('click', function(e) {
+            document.querySelectorAll('[id^="orderSuggestions_"]').forEach(box => {
+                if (!box.parentElement.contains(e.target)) {
+                    box.classList.add('hidden');
+                }
+            });
+        });
+
+        function checkOrderStock() {
+            const rows = document.querySelectorAll('.order-row');
+            const results = [];
+            let hasError = false;
+
+            rows.forEach(row => {
+                const id = row.id.split('_')[1];
+                const name = document.getElementById(`orderItemId_${id}`).value || document.getElementById(`orderSearch_${id}`).value.trim();
+                const qty = parseInt(document.getElementById(`orderQty_${id}`).value) || 0;
+
+                if (!name) return;
+
+                const item = inventoryData.find(i => i.name === name);
+                const stock = item ? item.quantity : 0;
+                const enough = stock >= qty;
+
+                if (!enough) hasError = true;
+
+                results.push({ name, qty, stock, enough, category: item ? item.category : '未知' });
+            });
+
+            if (results.length === 0) {
+                alert('请至少填写一个商品');
+                return;
+            }
+
+            const resultDiv = document.getElementById('orderCheckResult');
+            const contentDiv = document.getElementById('orderCheckContent');
+            resultDiv.classList.remove('hidden');
+
+            if (hasError) {
+                contentDiv.innerHTML = `
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex items-center gap-2 text-red-700">
+                        <i class="fa fa-exclamation-triangle"></i>
+                        <span class="font-medium">部分商品库存不足，请核实！</span>
+                    </div>
+                    ${renderCheckTable(results)}
+                `;
+            } else {
+                contentDiv.innerHTML = `
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 flex items-center gap-2 text-green-700">
+                        <i class="fa fa-check-circle"></i>
+                        <span class="font-medium">所有商品库存充足，可以接单！</span>
+                    </div>
+                    ${renderCheckTable(results)}
+                `;
+            }
+        }
+
+        function renderCheckTable(results) {
+            return `
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">商品名称</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">分类</th>
+                                <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">需求数量</th>
+                                <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">当前库存</th>
+                                <th class="px-3 py-2 text-right text-xs font-medium text-gray-500">剩余</th>
+                                <th class="px-3 py-2 text-center text-xs font-medium text-gray-500">状态</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            ${results.map(r => {
+                                const remain = r.stock - r.qty;
+                                const statusClass = r.enough 
+                                    ? 'bg-green-100 text-green-700' 
+                                    : 'bg-red-100 text-red-700';
+                                const statusText = r.enough ? '充足' : '不足';
+                                const remainClass = r.enough ? 'text-green-600' : 'text-red-600';
+                                return `<tr class="hover:bg-gray-50">
+                                    <td class="px-3 py-2 text-dark font-medium">${r.name}</td>
+                                    <td class="px-3 py-2 text-gray-600">${r.category}</td>
+                                    <td class="px-3 py-2 text-right font-mono">${r.qty}</td>
+                                    <td class="px-3 py-2 text-right font-mono">${r.stock}</td>
+                                    <td class="px-3 py-2 text-right font-mono font-medium ${remainClass}">${remain}</td>
+                                    <td class="px-3 py-2 text-center">
+                                        <span class="inline-flex px-2 py-1 rounded-full text-xs font-medium ${statusClass}">${statusText}</span>
+                                    </td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        // ========== 设置弹窗 ==========
+        function openSettingsModal() {
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        function openClearConfirmModal() {
+            document.getElementById('clearConfirmModal').classList.remove('hidden');
+        }
+
+        function closeClearConfirmModal() {
+            document.getElementById('clearConfirmModal').classList.add('hidden');
+        }
+
+        function confirmClearData() {
+            inventoryData = [];
+            localStorage.removeItem('inventoryData');
+            renderInventory();
+            closeClearConfirmModal();
+            closeSettingsModal();
+            alert('库存数据已清空');
+        }
+    </script>
+</body>
+</html>

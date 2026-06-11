@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  filament-app:
+    build: .
+    container_name: filament-management
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./data:/app/data
+      - .:/app              # 添加这行！挂载源代码
+      - /app/node_modules   # 排除node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=3001

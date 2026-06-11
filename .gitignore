@@ -1,0 +1,7 @@
+﻿node_modules/
+node_modules - 副本/
+.uploads/
+*.rar
+*.msi
+server.log
+data/*.json

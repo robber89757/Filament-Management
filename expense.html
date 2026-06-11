@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>花费统计 - 3D打印耗材管理系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/theme.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#f57c00',
+                        secondary: '#fff3e0',
+                        dark: '#212121',
+                        gray: {
+                            100: '#f5f5f5',
+                            200: '#eeeeee',
+                            300: '#f0f0f0',
+                            500: '#666666',
+                            700: '#999999'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            height: 56px;
+            padding: 0 16px;
+            color: #6B7280;
+            transition: background-color 0.2s;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            margin-left: 8px;
+            margin-right: 8px;
+        }
+        .sidebar-item:hover {
+            background-color: #E5E7EB;
+        }
+        .sidebar-active {
+            background-color: #F97316 !important;
+            color: white !important;
+            border-left: 4px solid #EA580C;
+        }
+        .btn-primary {
+            @apply bg-primary text-white px-4 py-2 rounded-md hover:bg-opacity-90 transition-colors;
+        }
+        .btn-outline {
+            @apply border border-gray-300 text-gray-600 px-4 py-2 rounded-md hover:bg-gray-100 transition-colors;
+        }
+        .no-spin-button::-webkit-inner-spin-button,
+        .no-spin-button::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .no-spin-button {
+            -moz-appearance: textfield;
+        }
+    </style>
+    <script>
+        (function() {
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (isCollapsed) {
+                document.write('<style id="sidebar-init-style">body { visibility: hidden; }</style>');
+                document.addEventListener('DOMContentLoaded', function() {
+                    const sidebar = document.getElementById('sidebar');
+                    const sidebarItems = document.querySelectorAll('.sidebar-item span');
+                    const siteTitle = document.getElementById('siteTitle');
+                    const sidebarToggle = document.getElementById('sidebarToggle');
+                    
+                    sidebar.classList.remove('w-64');
+                    sidebar.classList.add('w-16');
+                    sidebarItems.forEach(item => item.classList.add('hidden'));
+                    if (siteTitle) siteTitle.classList.add('hidden');
+                    const icon = sidebarToggle.querySelector('i');
+                    if (icon) {
+                        icon.classList.remove('fa-angle-left');
+                        icon.classList.add('fa-angle-right');
+                    }
+                    
+                    document.getElementById('sidebar-init-style').remove();
+                    document.body.style.visibility = 'visible';
+                });
+            }
+        })();
+    </script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="flex h-screen overflow-hidden">
+        <aside id="sidebar" class="w-64 bg-white border-r border-gray-200 flex flex-col transition-all duration-300">
+            <a href="index.html" class="px-4 py-4 flex items-center hover:bg-gray-100 transition-colors cursor-pointer">
+                <div class="w-10 h-10 bg-primary rounded-md flex items-center justify-center text-white">
+                    <i class="fa fa-cube"></i>
+                </div>
+                <h1 id="siteTitle" class="ml-3 text-lg font-bold text-dark"></h1>
+            </a>
+            
+            <nav class="flex-1 overflow-y-auto">
+                <ul>
+                    <li>
+                        <a href="index.html" class="sidebar-item">
+                            <i class="fa fa-home w-5 mr-3"></i>
+                            <span>主页</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="filament.html" class="sidebar-item">
+                            <i class="fa fa-paint-brush w-5 mr-3"></i>
+                            <span>耗材</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="supplier.html" class="sidebar-item">
+                            <i class="fa fa-truck w-5 mr-3"></i>
+                            <span>供应商</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="calculator.html" class="sidebar-item">
+                            <i class="fa fa-calculator w-5 mr-3"></i>
+                            <span>费用预估</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="expense.html" class="sidebar-item sidebar-active">
+                            <i class="fa fa-bar-chart w-5 mr-3"></i>
+                            <span>花费统计</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="sales.html" class="sidebar-item">
+                            <i class="fa fa-line-chart w-5 mr-3"></i>
+                            <span>销售情况</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="inventory.html" class="sidebar-item">
+                            <i class="fa fa-database w-5 mr-3"></i>
+                            <span>库存管理</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="qiaodoudou.html" class="sidebar-item">
+                            <i class="fa fa-th w-5 mr-3"></i>
+                            <span>敲豆豆</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="px-4 py-3 border-t border-gray-200">
+                <button id="sidebarToggle" class="w-full flex items-center justify-center text-gray-500 hover:text-primary transition-colors">
+                    <i class="fa fa-angle-left"></i>
+                </button>
+            </div>
+        </aside>
+        
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <div class="bg-white border-b border-gray-200 p-4 flex justify-end items-center h-20"></div>
+            
+            <div class="flex-1 overflow-y-auto p-6">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-dark">花费统计</h2>
+                    <p class="text-gray-500 mt-1">查看耗材购买、费用支出情况</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <div class="flex items-center justify-between mb-2">
+                            <span id="expenseLabel" class="text-sm text-gray-500">总花费</span>
+                            <div class="relative">
+                                <select id="expenseRangeSelect" class="appearance-none text-xs text-gray-500 border border-gray-300 rounded px-2 py-1 pr-6 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary bg-white">
+                                    <option value="all">总花费</option>
+                                    <option value="month">本月花费</option>
+                                    <option value="quarter">近三月花费</option>
+                                    <option value="year">近一年花费</option>
+                                </select>
+                                <i class="fa fa-caret-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                            </div>
+                        </div>
+                        <div id="totalExpense" class="text-2xl font-bold text-red-500">¥0.00</div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h3 class="text-sm text-gray-500 mb-3">费用类型分布</h3>
+                        <div class="flex items-center">
+                            <div id="typePieChart" class="relative flex-shrink-0" style="width: 120px; height: 120px;">
+                                <div class="text-center absolute inset-0 flex items-center justify-center">
+                                    <span id="pieCenterText" class="text-sm font-bold text-white drop-shadow-md">暂无数据</span>
+                                </div>
+                            </div>
+                            <div id="typeDistribution" class="flex-1 ml-4 space-y-2">
+                                <div class="text-center text-gray-400 text-sm py-4">加载中...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-dark">月度趋势</h3>
+                        <select id="yearSelect" class="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                        </select>
+                    </div>
+                    <div id="monthlyChart" class="relative" style="height: 256px;">
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-sm mb-6">
+                    <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+                        <h3 class="text-lg font-semibold text-dark">费用记录</h3>
+                        <button onclick="openAddExpenseModal()" class="btn-primary flex items-center">
+                            <i class="fa fa-plus mr-2"></i>
+                            添加记录
+                        </button>
+                    </div>
+                    
+                    <div class="p-4 border-b border-gray-200 flex flex-wrap gap-2">
+                        <select id="filterType" onchange="renderExpenseTable()" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="">全部类型</option>
+                            <option value="filament">耗材购买</option>
+                            <option value="equipment">设备配件</option>
+                            <option value="electricity">电费</option>
+                            <option value="maintenance">维护保养</option>
+                            <option value="other">其他</option>
+                        </select>
+                        <input type="date" id="filterStartDate" onchange="renderExpenseTable()" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                        <input type="date" id="filterEndDate" onchange="renderExpenseTable()" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                        <button onclick="clearFilters()" class="px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-100">清除筛选</button>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">日期</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">类型</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">描述</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">供应商</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">金额</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expenseTableBody" class="divide-y divide-gray-200">
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div id="expensePagination" class="p-4 flex justify-between items-center">
+                    </div>
+                </div>
+            </div>
+            
+            <footer class="bg-white border-t border-gray-200 p-4 flex justify-center items-center">
+                <div class="text-xs text-gray-700">版本 1.0.1</div>
+            </footer>
+        </main>
+    </div>
+    
+    <button id="settingsBtn" class="fixed bottom-4 right-4 w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white shadow-md hover:bg-opacity-90 transition-colors z-40">
+        <i class="fa fa-gear"></i>
+    </button>
+
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-dark">设置</h3>
+                <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">费用类型管理</label>
+                <div id="expenseTypesList" class="flex flex-wrap gap-2 mb-2"></div>
+                <div class="flex gap-2 mb-3">
+                    <input type="text" id="newExpenseType" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="输入新费用类型">
+                    <button id="addExpenseType" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+                        <i class="fa fa-plus"></i>
+                    </button>
+                </div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">费用类型颜色设置</label>
+                <div class="flex gap-2 items-center">
+                    <select id="expenseTypeColorSelect" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="">选择费用类型</option>
+                    </select>
+                    <input type="color" id="expenseTypeColorPicker" class="w-10 h-10 p-0 border-0 rounded cursor-pointer" value="#3b82f6">
+                    <button id="saveExpenseTypeColor" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-colors">
+                        <i class="fa fa-check"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">购买渠道管理</label>
+                <div id="expenseChannelsList" class="flex flex-wrap gap-2 mb-2"></div>
+                <div class="flex gap-2">
+                    <input type="text" id="newExpenseChannel" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="输入新购买渠道">
+                    <button id="addExpenseChannel" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+                        <i class="fa fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">主题设置</label>
+                <button type="button" class="theme-toggle-btn w-full flex items-center justify-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:opacity-90 transition-opacity">
+                    <i class="fa fa-moon-o mr-2"></i>深色模式
+                </button>
+            </div>
+            
+            <div class="flex justify-end">
+                <button id="saveSettings" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-colors">
+                    保存设置
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="addExpenseModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4">
+            <div class="flex justify-between items-center p-4 border-b border-gray-200">
+                <h3 id="expenseModalTitle" class="text-lg font-semibold text-dark">添加费用记录</h3>
+                <button onclick="closeAddExpenseModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <form id="addExpenseForm" class="p-4">
+                <input type="hidden" id="editExpenseId">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">费用类型</label>
+                    <select name="type" id="expenseTypeSelect" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" required>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">金额 (元)</label>
+                    <input type="number" name="amount" step="0.01" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary no-spin-button" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">日期</label>
+                    <input type="date" name="date" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">购买渠道</label>
+                    <select name="channelId" id="channelSelect" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="">无</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">描述</label>
+                    <textarea name="description" rows="3" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="请输入费用描述"></textarea>
+                </div>
+                <div class="flex justify-end space-x-4">
+                    <button type="button" onclick="closeAddExpenseModal()" class="px-6 py-3 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors font-medium">取消</button>
+                    <button type="submit" id="expenseModalSaveBtn" class="px-8 py-3 bg-primary text-white rounded-lg font-semibold hover:bg-opacity-90 transition-colors shadow-md hover:shadow-lg">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="messageModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-sm mx-4">
+            <div class="flex justify-between items-center p-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-dark">提示</h3>
+                <button onclick="closeMessageModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <div class="p-4">
+                <p id="messageContent" class="text-gray-700"></p>
+            </div>
+            <div class="flex justify-end p-4 border-t border-gray-200">
+                <button onclick="closeMessageModal()" class="px-6 py-2 bg-primary text-white rounded-lg font-medium hover:bg-opacity-90 transition-colors">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = '/api';
+        let expenses = [];
+        let suppliers = [];
+        let currentPage = 1;
+        const pageSize = 10;
+        let expenseTypes = [];
+        let expenseChannels = [];
+        
+        let dbExpenseTypeColors = {};
+
+        async function loadExpenseSettings() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/expense-settings`);
+                const data = await response.json();
+                if (data.success) {
+                    expenseTypes = data.data.expenseTypes;
+                    expenseChannels = data.data.expenseChannels;
+                    if (data.data.expenseTypeColors !== undefined) {
+                        dbExpenseTypeColors = data.data.expenseTypeColors;
+                    }
+                    renderExpenseTypesSettings();
+                    renderExpenseChannelsSettings();
+                    updateExpenseTypeSelect();
+                    updateChannelSelect();
+                    updateExpenseTypeColorSelect();
+                }
+            } catch (error) {
+                console.error('加载费用设置失败:', error);
+            }
+        }
+
+        function updateExpenseTypeColorSelect() {
+            const select = document.getElementById('expenseTypeColorSelect');
+            if (!select) return;
+            select.innerHTML = '<option value="">选择费用类型</option>' +
+                expenseTypes.map(t => `<option value="${t.id}">${t.label}</option>`).join('');
+        }
+
+        function renderExpenseTypesSettings() {
+            const container = document.getElementById('expenseTypesList');
+            container.innerHTML = expenseTypes.map((type, index) => {
+                const color = dbExpenseTypeColors[type.id] || '#3b82f6';
+                return `<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm text-white" style="background-color: ${color}">
+                    ${type.label}
+                    <button onclick="removeExpenseType(${index})" class="hover:opacity-70">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </span>`;
+            }).join('');
+        }
+        
+        window.removeExpenseType = function(index) {
+            expenseTypes.splice(index, 1);
+            saveExpenseSettings();
+            renderExpenseTypesSettings();
+            updateExpenseTypeSelect();
+        };
+        
+        function renderExpenseChannelsSettings() {
+            const container = document.getElementById('expenseChannelsList');
+            container.innerHTML = expenseChannels.map((channel, index) => `
+                <span class="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
+                    ${channel.label}
+                    <button onclick="removeExpenseChannel(${index})" class="hover:text-red-500">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </span>
+            `).join('');
+        }
+        
+        window.removeExpenseChannel = function(index) {
+            expenseChannels.splice(index, 1);
+            saveExpenseSettings();
+            renderExpenseChannelsSettings();
+            updateChannelSelect();
+        };
+        
+        async function saveExpenseSettings() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/expense-settings`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ expenseTypes, expenseChannels })
+                });
+                const data = await response.json();
+                if (!data.success) {
+                    console.error('保存费用设置失败');
+                }
+            } catch (error) {
+                console.error('保存费用设置失败:', error);
+            }
+        }
+        
+        function updateExpenseTypeSelect() {
+            const select = document.getElementById('expenseTypeSelect');
+            if (select) {
+                select.innerHTML = expenseTypes.map(t => `<option value="${t.id}">${t.label}</option>`).join('');
+            }
+        }
+        
+        function updateChannelSelect() {
+            const select = document.getElementById('channelSelect');
+            if (select) {
+                select.innerHTML = '<option value="">无</option>' + 
+                    expenseChannels.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
+            }
+        }
+        
+        async function loadSuppliers() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/suppliers`);
+                const data = await response.json();
+                if (data.success) {
+                    suppliers = data.data;
+                }
+            } catch (error) {
+                console.error('加载供应商失败:', error);
+            }
+        }
+        
+        async function loadExpenses() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/expense-records`);
+                const data = await response.json();
+                if (data.success) {
+                    expenses = data.data.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    updateStatistics();
+                    renderExpenseTable();
+                    renderTypeDistribution();
+                    renderMonthlyChart();
+                }
+            } catch (error) {
+                console.error('加载费用记录失败:', error);
+            }
+        }
+        
+        function getFilteredExpenses() {
+            const range = document.getElementById('expenseRangeSelect').value;
+            const now = new Date();
+            if (range === 'month') {
+                const currentMonth = now.toISOString().substring(0, 7);
+                return expenses.filter(e => e.date.startsWith(currentMonth));
+            } else if (range === 'quarter') {
+                const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+                return expenses.filter(e => new Date(e.date) >= threeMonthsAgo);
+            } else if (range === 'year') {
+                const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+                return expenses.filter(e => new Date(e.date) >= oneYearAgo);
+            }
+            return expenses;
+        }
+
+        function updateStatistics() {
+            const filtered = getFilteredExpenses();
+            const total = filtered.reduce((sum, e) => sum + e.amount, 0);
+            document.getElementById('totalExpense').textContent = `¥${total.toFixed(2)}`;
+
+            const labelMap = { all: '总花费', month: '本月花费', quarter: '近三月花费', year: '近一年花费' };
+            const range = document.getElementById('expenseRangeSelect').value;
+            document.getElementById('expenseLabel').textContent = labelMap[range];
+        }
+        
+        function renderTypeDistribution() {
+            const defaultColorMap = {
+                'filament': '#3b82f6',
+                'equipment': '#22c55e',
+                'electricity': '#eab308',
+                'maintenance': '#a855f7',
+                'other': '#6b7280'
+            };
+            
+            const filtered = getFilteredExpenses();
+            const typeTotals = {};
+            filtered.forEach(e => {
+                typeTotals[e.type] = (typeTotals[e.type] || 0) + e.amount;
+            });
+            
+            const total = Object.values(typeTotals).reduce((sum, v) => sum + v, 0);
+            const container = document.getElementById('typeDistribution');
+            const pieChart = document.getElementById('typePieChart');
+            const pieCenterText = document.getElementById('pieCenterText');
+
+            if (total === 0) {
+                pieChart.style.background = '#e5e7eb';
+                pieCenterText.textContent = '暂无数据';
+                container.innerHTML = '<div class="text-center text-gray-400 text-sm py-4">暂无数据</div>';
+                return;
+            }
+
+            const entries = Object.entries(typeTotals).sort((a, b) => b[1] - a[1]);
+            let currentAngle = 0;
+            const gradientParts = [];
+
+            entries.forEach(([typeId, amount]) => {
+                const percentage = amount / total * 100;
+                const color = dbExpenseTypeColors[typeId] || defaultColorMap[typeId] || '#6b7280';
+                gradientParts.push(`${color} ${currentAngle}% ${currentAngle + percentage}%`);
+                currentAngle += percentage;
+            });
+
+            pieChart.style.background = `conic-gradient(${gradientParts.join(', ')})`;
+            pieChart.style.borderRadius = '50%';
+            pieCenterText.textContent = `¥${total.toFixed(0)}`;
+
+            container.innerHTML = entries.map(([typeId, amount]) => {
+                const typeInfo = expenseTypes.find(t => t.id === typeId) || { id: typeId, label: typeId };
+                const color = dbExpenseTypeColors[typeId] || defaultColorMap[typeId] || '#6b7280';
+                const percentage = (amount / total * 100).toFixed(1);
+                return `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="w-2.5 h-2.5 rounded-full mr-2 flex-shrink-0" style="background: ${color}"></div>
+                            <span class="text-sm text-gray-600">${typeInfo.label}</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm font-medium text-dark">¥${amount.toFixed(0)}</span>
+                            <span class="text-xs text-gray-400 w-12 text-right">${percentage}%</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function renderMonthlyChart() {
+            const yearSelect = document.getElementById('yearSelect');
+            const currentYear = new Date().getFullYear();
+            const years = [...new Set(expenses.map(e => new Date(e.date).getFullYear()))];
+            if (years.length === 0) years.push(currentYear);
+            years.sort((a, b) => b - a);
+            
+            yearSelect.innerHTML = years.map(y => 
+                `<option value="${y}" ${y === currentYear ? 'selected' : ''}>${y}年</option>`
+            ).join('');
+            
+            const selectedYear = parseInt(yearSelect.value);
+            const monthlyData = Array(12).fill(0);
+            
+            expenses.forEach(e => {
+                const date = new Date(e.date);
+                if (date.getFullYear() === selectedYear) {
+                    monthlyData[date.getMonth()] += e.amount;
+                }
+            });
+            
+            const maxValue = Math.max(...monthlyData, 1);
+            const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+            const chartHeight = 220;
+            const barMaxHeight = chartHeight - 24;
+            
+            const container = document.getElementById('monthlyChart');
+            container.innerHTML = `
+                <div class="absolute bottom-6 left-0 right-0 flex items-end justify-around" style="height: ${barMaxHeight}px;">
+                    ${monthlyData.map((value, index) => {
+                        const barHeight = Math.max((value / maxValue) * barMaxHeight, 2);
+                        return `
+                            <div class="flex-1 flex flex-col items-center justify-end h-full px-1 relative group">
+                                <div class="absolute bottom-full mb-2 px-2 py-1 bg-dark text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">${months[index]}: ¥${value.toFixed(2)}</div>
+                                <div class="w-full bg-primary rounded-t cursor-pointer hover:opacity-80 transition-opacity" style="height: ${barHeight}px;"></div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 flex justify-around" style="height: 24px;">
+                    ${months.map(m => `<div class="flex-1 text-center text-xs text-gray-500 leading-6">${m}</div>`).join('')}
+                </div>
+            `;
+        }
+        
+        function renderExpenseTable() {
+            const filterType = document.getElementById('filterType').value;
+            const startDate = document.getElementById('filterStartDate').value;
+            const endDate = document.getElementById('filterEndDate').value;
+            
+            let filtered = expenses;
+            if (filterType) {
+                filtered = filtered.filter(e => e.type === filterType);
+            }
+            if (startDate) {
+                filtered = filtered.filter(e => e.date >= startDate);
+            }
+            if (endDate) {
+                filtered = filtered.filter(e => e.date <= endDate);
+            }
+            
+            const totalPages = Math.ceil(filtered.length / pageSize);
+            const start = (currentPage - 1) * pageSize;
+            const end = start + pageSize;
+            const pageData = filtered.slice(start, end);
+            
+            const typeMap = {
+                'filament': '耗材购买',
+                'equipment': '设备配件',
+                'electricity': '电费',
+                'maintenance': '维护保养',
+                'other': '其他'
+            };
+            
+            const tbody = document.getElementById('expenseTableBody');
+            if (pageData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-4 py-8 text-center text-gray-500">暂无费用记录</td>
+                    </tr>
+                `;
+            } else {
+                tbody.innerHTML = pageData.map(record => {
+                    const supplier = suppliers.find(s => s._id === record.supplierId);
+                    return `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3 text-sm text-gray-900">${new Date(record.date).toLocaleDateString('zh-CN')}</td>
+                            <td class="px-4 py-3 text-sm">
+                                <span class="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">${typeMap[record.type] || record.type}</span>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-900">${record.description || '-'}</td>
+                            <td class="px-4 py-3 text-sm text-gray-900">${supplier ? supplier.name : '-'}</td>
+                            <td class="px-4 py-3 text-sm text-right font-medium text-red-600">-¥${record.amount.toFixed(2)}</td>
+                            <td class="px-4 py-3 text-center">
+                                <button onclick="editExpense('${record._id}')" class="text-blue-500 hover:text-blue-700 mr-2">
+                                    <i class="fa fa-pencil"></i>
+                                </button>
+                                <button onclick="deleteExpense('${record._id}')" class="text-red-500 hover:text-red-700">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+            
+            const pagination = document.getElementById('expensePagination');
+            pagination.innerHTML = `
+                <div class="text-sm text-gray-500">显示 ${start + 1}-${Math.min(end, filtered.length)} 条，共 ${filtered.length} 条</div>
+                <div class="flex space-x-2">
+                    <button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} class="px-3 py-1 border border-gray-300 rounded text-gray-500 hover:bg-gray-100 disabled:opacity-50">
+                        <i class="fa fa-chevron-left"></i>
+                    </button>
+                    ${Array.from({length: totalPages}, (_, i) => i + 1).map(page => `
+                        <button onclick="changePage(${page})" class="px-3 py-1 border border-gray-300 rounded ${page === currentPage ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-100'}">${page}</button>
+                    `).join('')}
+                    <button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''} class="px-3 py-1 border border-gray-300 rounded text-gray-500 hover:bg-gray-100 disabled:opacity-50">
+                        <i class="fa fa-chevron-right"></i>
+                    </button>
+                </div>
+            `;
+        }
+        
+        function changePage(page) {
+            const totalPages = Math.ceil(expenses.length / pageSize);
+            if (page >= 1 && page <= totalPages) {
+                currentPage = page;
+                renderExpenseTable();
+            }
+        }
+        
+        function clearFilters() {
+            document.getElementById('filterType').value = '';
+            document.getElementById('filterStartDate').value = '';
+            document.getElementById('filterEndDate').value = '';
+            currentPage = 1;
+            renderExpenseTable();
+        }
+        
+        function openAddExpenseModal() {
+            document.getElementById('addExpenseModal').classList.remove('hidden');
+            document.getElementById('addExpenseModal').classList.add('flex');
+            document.querySelector('input[name="date"]').value = new Date().toISOString().split('T')[0];
+        }
+        
+        function closeAddExpenseModal() {
+            document.getElementById('addExpenseModal').classList.add('hidden');
+            document.getElementById('addExpenseModal').classList.remove('flex');
+            document.getElementById('addExpenseForm').reset();
+            document.getElementById('expenseModalTitle').textContent = '添加费用记录';
+            document.getElementById('expenseModalSaveBtn').textContent = '保存';
+            document.getElementById('editExpenseId').value = '';
+        }
+        
+        function showMessage(message) {
+            document.getElementById('messageContent').textContent = message;
+            document.getElementById('messageModal').classList.remove('hidden');
+            document.getElementById('messageModal').classList.add('flex');
+        }
+        
+        function closeMessageModal() {
+            document.getElementById('messageModal').classList.add('hidden');
+            document.getElementById('messageModal').classList.remove('flex');
+        }
+        
+        async function editExpense(id) {
+            const record = expenses.find(r => r._id === id);
+            if (!record) return;
+            
+            document.getElementById('expenseModalTitle').textContent = '编辑费用记录';
+            document.getElementById('expenseModalSaveBtn').textContent = '更新';
+            document.getElementById('editExpenseId').value = id;
+            
+            document.querySelector('select[name="type"]').value = record.type;
+            document.querySelector('input[name="amount"]').value = record.amount;
+            document.querySelector('input[name="date"]').value = record.date.split('T')[0];
+            document.querySelector('textarea[name="description"]').value = record.description || '';
+            const channelSelect = document.querySelector('select[name="channelId"]');
+            if (channelSelect) channelSelect.value = record.supplierId || '';
+            
+            document.getElementById('addExpenseModal').classList.remove('hidden');
+            document.getElementById('addExpenseModal').classList.add('flex');
+        }
+        
+        async function deleteExpense(id) {
+            if (!confirm('确定要删除这条费用记录吗？')) return;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/expense-records/${id}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showMessage('删除成功！');
+                    loadExpenses();
+                }
+            } catch (error) {
+                console.error('删除失败:', error);
+                showMessage('删除失败：网络错误');
+            }
+        }
+        
+        function updateSiteName() {
+            const siteTitle = document.getElementById('siteTitle');
+            const savedName = localStorage.getItem('siteName') || 'Leo的百宝箱';
+            siteTitle.textContent = savedName;
+        }
+        
+        function initSidebarToggle() {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarItems = document.querySelectorAll('.sidebar-item span');
+            const siteTitle = document.getElementById('siteTitle');
+            
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (isCollapsed) {
+                sidebar.classList.add('w-16');
+                sidebar.classList.remove('w-64');
+                sidebarItems.forEach(item => item.classList.add('hidden'));
+                if (siteTitle) siteTitle.classList.add('hidden');
+                const icon = sidebarToggle.querySelector('i');
+                if (icon) {
+                    icon.classList.remove('fa-angle-left');
+                    icon.classList.add('fa-angle-right');
+                }
+            }
+            
+            sidebarToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('w-64');
+                sidebar.classList.toggle('w-16');
+                
+                sidebarItems.forEach(item => {
+                    item.classList.toggle('hidden');
+                });
+                
+                if (siteTitle) {
+                    siteTitle.classList.toggle('hidden');
+                }
+                
+                const icon = sidebarToggle.querySelector('i');
+                if (icon) {
+                    icon.classList.toggle('fa-angle-left');
+                    icon.classList.toggle('fa-angle-right');
+                }
+                
+                localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('w-16'));
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', async function() {
+            updateSiteName();
+            await loadExpenseSettings();
+            loadSuppliers();
+            loadExpenses();
+            initSidebarToggle();
+            
+            document.getElementById('settingsBtn')?.addEventListener('click', () => {
+                document.getElementById('settingsModal').classList.remove('hidden');
+            });
+            
+            document.getElementById('closeModal')?.addEventListener('click', () => {
+                document.getElementById('settingsModal').classList.add('hidden');
+            });
+            
+            document.getElementById('addExpenseType')?.addEventListener('click', () => {
+                const input = document.getElementById('newExpenseType');
+                const label = input?.value.trim();
+                if (label) {
+                    const id = label.toLowerCase().replace(/\s+/g, '-');
+                    if (!expenseTypes.find(t => t.id === id)) {
+                        expenseTypes.push({ id, label });
+                        saveExpenseSettings();
+                        renderExpenseTypesSettings();
+                        updateExpenseTypeSelect();
+                        input.value = '';
+                    }
+                }
+            });
+            
+            document.getElementById('addExpenseChannel')?.addEventListener('click', () => {
+                const input = document.getElementById('newExpenseChannel');
+                const label = input?.value.trim();
+                if (label) {
+                    const id = label.toLowerCase().replace(/\s+/g, '-');
+                    if (!expenseChannels.find(c => c.id === id)) {
+                        expenseChannels.push({ id, label });
+                        saveExpenseSettings();
+                        renderExpenseChannelsSettings();
+                        updateChannelSelect();
+                        input.value = '';
+                    }
+                }
+            });
+
+            document.getElementById('expenseTypeColorSelect')?.addEventListener('change', () => {
+                const typeId = document.getElementById('expenseTypeColorSelect').value;
+                const picker = document.getElementById('expenseTypeColorPicker');
+                if (typeId && dbExpenseTypeColors[typeId]) {
+                    picker.value = dbExpenseTypeColors[typeId];
+                } else {
+                    picker.value = '#3b82f6';
+                }
+            });
+
+            document.getElementById('saveExpenseTypeColor')?.addEventListener('click', async () => {
+                const typeId = document.getElementById('expenseTypeColorSelect').value;
+                const color = document.getElementById('expenseTypeColorPicker').value;
+                console.log('保存颜色按钮被点击');
+                console.log('选择的费用类型:', typeId);
+                console.log('选择的颜色:', color);
+                if (!typeId) {
+                    alert('请先选择一个费用类型');
+                    return;
+                }
+                dbExpenseTypeColors[typeId] = color;
+                console.log('准备发送的 dbExpenseTypeColors:', dbExpenseTypeColors);
+                try {
+                    console.log('发送请求到:', `${API_BASE_URL}/expense-settings`);
+                    const response = await fetch(`${API_BASE_URL}/expense-settings`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ expenseTypeColors: dbExpenseTypeColors })
+                    });
+                    console.log('收到响应:', response.status);
+                    const data = await response.json();
+                    console.log('响应数据:', data);
+                    renderExpenseTypesSettings();
+                    renderTypeDistribution();
+                    alert('颜色已保存！');
+                } catch (error) {
+                    console.error('保存颜色失败:', error);
+                    alert('保存失败: ' + error.message);
+                }
+            });
+
+            document.getElementById('saveSettings')?.addEventListener('click', async () => {
+                console.log('保存设置被点击');
+                console.log('expenseTypes:', expenseTypes);
+                console.log('expenseChannels:', expenseChannels);
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/expense-settings`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ expenseTypes, expenseChannels })
+                    });
+                    const data = await response.json();
+                    console.log('保存结果:', data);
+                    
+                    if (data.success) {
+                        alert('设置已保存！');
+                        document.getElementById('settingsModal').classList.add('hidden');
+                    } else {
+                        alert('保存失败: ' + (data.message || '未知错误'));
+                    }
+                } catch (error) {
+                    console.error('保存失败:', error);
+                    alert('保存失败: ' + error.message);
+                }
+            });
+            
+            document.getElementById('addExpenseForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                
+                const record = {
+                    type: formData.get('type'),
+                    amount: parseFloat(formData.get('amount')),
+                    date: formData.get('date'),
+                    description: formData.get('description'),
+                    supplierId: formData.get('channelId') || null
+                };
+                
+                const editId = document.getElementById('editExpenseId').value;
+                
+                try {
+                    const url = editId ? `${API_BASE_URL}/expense-records/${editId}` : `${API_BASE_URL}/expense-records`;
+                    const method = editId ? 'PUT' : 'POST';
+                    
+                    const response = await fetch(url, {
+                        method: method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(record)
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        showMessage(editId ? '更新成功！' : '添加成功！');
+                        closeAddExpenseModal();
+                        loadExpenses();
+                    } else {
+                        showMessage((editId ? '更新' : '添加') + '失败：' + data.message);
+                    }
+                } catch (error) {
+                    console.error((editId ? '更新' : '添加') + '失败:', error);
+                    showMessage((editId ? '更新' : '添加') + '失败：网络错误');
+                }
+            });
+            
+            document.getElementById('yearSelect').addEventListener('change', renderMonthlyChart);
+            document.getElementById('expenseRangeSelect').addEventListener('change', function() {
+                updateStatistics();
+                renderTypeDistribution();
+            });
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('add') === 'true') {
+                openAddExpenseModal();
+            }
+        });
+    </script>
+</body>
+</html>

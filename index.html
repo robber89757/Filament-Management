@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主页 - 3D打印耗材管理系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#f57c00',
+                        dark: '#212121'
+                    }
+                }
+            }
+        }
+    </script>
+    <script>
+        (function() {
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (isCollapsed) {
+                document.write('<style id="sidebar-init-style">body { visibility: hidden; }</style>');
+                document.addEventListener('DOMContentLoaded', function() {
+                    const sidebar = document.getElementById('sidebar');
+                    const sidebarItems = document.querySelectorAll('.sidebar-item span');
+                    const siteTitle = document.getElementById('siteTitle');
+                    const sidebarToggle = document.getElementById('sidebarToggle');
+                    
+                    sidebar.classList.remove('w-64');
+                    sidebar.classList.add('w-16');
+                    sidebarItems.forEach(item => item.classList.add('hidden'));
+                    if (siteTitle) siteTitle.classList.add('hidden');
+                    const icon = sidebarToggle.querySelector('i');
+                    if (icon) {
+                        icon.classList.remove('fa-angle-left');
+                        icon.classList.add('fa-angle-right');
+                    }
+                    
+                    document.getElementById('sidebar-init-style').remove();
+                    document.body.style.visibility = 'visible';
+                });
+            }
+        })();
+    </script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="flex h-screen overflow-hidden">
+        <aside id="sidebar" class="w-64 bg-white border-r border-gray-200 flex flex-col transition-all duration-300">
+            <a href="index.html" class="px-4 py-4 flex items-center hover:bg-gray-100 transition-colors cursor-pointer">
+                <div class="w-10 h-10 bg-primary rounded-md flex items-center justify-center text-white">
+                    <i class="fa fa-cube"></i>
+                </div>
+                <h1 id="siteTitle" class="ml-3 text-lg font-bold text-dark"></h1>
+            </a>
+            
+            <nav class="flex-1 overflow-y-auto">
+                <ul>
+                    <li><a href="index.html" class="sidebar-item sidebar-active"><i class="fa fa-home w-5 mr-3"></i><span>主页</span></a></li>
+                    <li><a href="filament.html" class="sidebar-item"><i class="fa fa-paint-brush w-5 mr-3"></i><span>耗材</span></a></li>
+                    <li><a href="supplier.html" class="sidebar-item"><i class="fa fa-truck w-5 mr-3"></i><span>供应商</span></a></li>
+                    <li><a href="calculator.html" class="sidebar-item"><i class="fa fa-calculator w-5 mr-3"></i><span>费用预估</span></a></li>
+                    <li><a href="expense.html" class="sidebar-item"><i class="fa fa-bar-chart w-5 mr-3"></i><span>花费统计</span></a></li>
+                    <li><a href="sales.html" class="sidebar-item"><i class="fa fa-line-chart w-5 mr-3"></i><span>销售情况</span></a></li>
+                    <li><a href="inventory.html" class="sidebar-item"><i class="fa fa-database w-5 mr-3"></i><span>库存管理</span></a></li>
+                    <li><a href="qiaodoudou.html" class="sidebar-item"><i class="fa fa-th w-5 mr-3"></i><span>敲豆豆</span></a></li>
+                </ul>
+            </nav>
+            
+            <div class="px-4 py-3 border-t border-gray-200">
+                <button id="sidebarToggle" class="w-full flex items-center justify-center text-gray-500 hover:text-primary transition-colors">
+                    <i class="fa fa-angle-left"></i>
+                </button>
+            </div>
+        </aside>
+        
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <div class="bg-white border-b border-gray-200 p-4 flex justify-end items-center h-20"></div>
+            
+            <div class="flex-1 overflow-y-auto p-6">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-dark">欢迎回来！</h2>
+                    <p class="text-gray-500 mt-1">以下是您的耗材管理概览</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    <div class="stat-card" onclick="window.location.href='filament.html'">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <i class="fa fa-paint-brush text-blue-500 text-xl"></i>
+                            </div>
+                            <i class="fa fa-chevron-right text-gray-400"></i>
+                        </div>
+                        <div class="text-sm text-gray-500 mb-1">耗材总数</div>
+                        <div id="totalSpools" class="text-3xl font-bold text-dark">0</div>
+                        <div id="lowStockWarning" class="text-xs text-red-500 mt-2 hidden">
+                            <i class="fa fa-warning mr-1"></i><span>有库存不足的耗材</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card" onclick="window.location.href='expense.html'">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                                <i class="fa fa-money text-red-500 text-xl"></i>
+                            </div>
+                            <i class="fa fa-chevron-right text-gray-400"></i>
+                        </div>
+                        <div class="text-sm text-gray-500 mb-1">总花费金额</div>
+                        <div id="totalExpense" class="text-3xl font-bold text-dark">¥0</div>
+                    </div>
+                    
+                    <div class="stat-card" onclick="window.location.href='expense.html'">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                <i class="fa fa-line-chart text-purple-500 text-xl"></i>
+                            </div>
+                            <i class="fa fa-chevron-right text-gray-400"></i>
+                        </div>
+                        <div class="text-sm text-gray-500 mb-1">本月花费</div>
+                        <div id="monthExpense" class="text-3xl font-bold text-primary">¥0</div>
+                    </div>
+                    
+                    <div class="stat-card" onclick="window.location.href='sales.html'">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                <i class="fa fa-shopping-cart text-green-500 text-xl"></i>
+                            </div>
+                            <i class="fa fa-chevron-right text-gray-400"></i>
+                        </div>
+                        <div class="text-sm text-gray-500 mb-1">本月销售金额</div>
+                        <div id="monthSales" class="text-3xl font-bold text-dark">¥0</div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold text-dark">库存概览</h3>
+                            <a href="filament.html" class="text-primary text-sm hover:underline">查看全部</a>
+                        </div>
+                        <div id="inventoryOverview" class="space-y-3">
+                            <div class="text-center text-gray-500 py-8">加载中...</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold text-dark">快速操作</h3>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <button onclick="window.location.href='filament.html?add=true'" class="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center mr-3">
+                                    <i class="fa fa-plus text-white"></i>
+                                </div>
+                                <div class="text-left">
+                                    <div class="font-medium text-dark">添加耗材</div>
+                                    <div class="text-xs text-gray-500">新增料盘</div>
+                                </div>
+                            </button>
+                            <button onclick="window.location.href='sales.html?add=true'" class="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                <div class="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center mr-3">
+                                    <i class="fa fa-shopping-cart text-white"></i>
+                                </div>
+                                <div class="text-left">
+                                    <div class="font-medium text-dark">添加销售记录</div>
+                                    <div class="text-xs text-gray-500">记录销售</div>
+                                </div>
+                            </button>
+                            <button onclick="window.location.href='calculator.html'" class="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                <div class="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center mr-3">
+                                    <i class="fa fa-calculator text-white"></i>
+                                </div>
+                                <div class="text-left">
+                                    <div class="font-medium text-dark">费用预估</div>
+                                    <div class="text-xs text-gray-500">计算报价</div>
+                                </div>
+                            </button>
+                            <button onclick="window.location.href='expense.html?add=true'" class="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                <div class="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center mr-3">
+                                    <i class="fa fa-plus text-white"></i>
+                                </div>
+                                <div class="text-left">
+                                    <div class="font-medium text-dark">添加费用</div>
+                                    <div class="text-xs text-gray-500">记录支出</div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold text-dark">材料分布</h3>
+                        </div>
+                        <div id="materialDistribution" class="space-y-3">
+                            <div class="text-center text-gray-500 py-8">加载中...</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold text-dark">最近费用记录</h3>
+                            <a href="expense.html" class="text-primary text-sm hover:underline">查看全部</a>
+                        </div>
+                        <div id="recentExpenses" class="space-y-2">
+                            <div class="text-center text-gray-500 py-8">加载中...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <footer class="bg-white border-t border-gray-200 p-4 flex justify-center items-center">
+                <div class="text-xs text-gray-700">版本 1.0.1</div>
+            </footer>
+        </main>
+        
+        <button id="settingsBtn" class="fixed bottom-4 right-4 w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white shadow-md hover:bg-opacity-90 transition-colors">
+            <i class="fa fa-gear"></i>
+        </button>
+        
+        <div id="settingsModal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-dark">设置</h3>
+                    <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fa fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">网站名称</label>
+                    <input type="text" id="siteNameInput" class="form-control" placeholder="请输入网站名称">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">主题设置</label>
+                    <button type="button" class="theme-toggle-btn w-full flex items-center justify-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:opacity-90 transition-opacity">
+                        <i class="fa fa-moon-o mr-2"></i>深色模式
+                    </button>
+                </div>
+                
+                <div class="flex justify-end">
+                    <button id="saveSettings" class="btn-primary">保存设置</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="messageModal" class="modal-overlay hidden">
+            <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-4 text-center">
+                <div class="text-4xl mb-4"><i class="fa fa-info-circle text-primary"></i></div>
+                <p id="messageContent" class="text-gray-700 mb-4"></p>
+                <button onclick="closeMessageModal()" class="btn-primary">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/utils.js"></script>
+    <script src="js/theme.js"></script>
+    <script>
+        async function loadStatistics() {
+            try {
+                const [spoolsRes, expensesRes, salesRes, settingsRes] = await Promise.all([
+                    fetch(`${API_BASE_URL}/spools`),
+                    fetch(`${API_BASE_URL}/expense-records`),
+                    fetch(`${API_BASE_URL}/sales-records`),
+                    fetch(`${API_BASE_URL}/expense-settings`)
+                ]);
+
+                const spoolsData = await spoolsRes.json();
+                const expensesData = await expensesRes.json();
+                const salesData = await salesRes.json();
+                const settingsData = await settingsRes.json();
+
+                let expenseTypes = [];
+                if (settingsData.success && settingsData.data && settingsData.data.expenseTypes) {
+                    expenseTypes = settingsData.data.expenseTypes;
+                }
+
+                if (spoolsData.success) {
+                    const spools = spoolsData.data;
+                    document.getElementById('totalSpools').textContent = spools.length;
+
+                    const lowStock = spools.filter(s => {
+                        const ratio = s.remainingWeight / s.initialWeight;
+                        return ratio < 0.2 && ratio > 0;
+                    });
+
+                    if (lowStock.length > 0) {
+                        document.getElementById('lowStockWarning').classList.remove('hidden');
+                    }
+
+                    renderInventoryOverview(spools);
+                    renderMaterialDistribution(spools);
+                }
+
+                if (expensesData.success) {
+                    const expenses = expensesData.data.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    const total = expenses.reduce((sum, e) => sum + e.amount, 0);
+                    document.getElementById('totalExpense').textContent = `¥${total.toFixed(0)}`;
+
+                    const currentMonth = new Date().toISOString().substring(0, 7);
+                    const monthTotal = expenses
+                        .filter(e => e.date.startsWith(currentMonth))
+                        .reduce((sum, e) => sum + e.amount, 0);
+                    document.getElementById('monthExpense').textContent = `¥${monthTotal.toFixed(0)}`;
+
+                    renderRecentExpenses(expenses, expenseTypes);
+                }
+
+                if (salesData.success) {
+                    const sales = salesData.data;
+                    const currentMonth = new Date().toISOString().substring(0, 7);
+                    const monthSalesTotal = sales
+                        .filter(s => s.date.startsWith(currentMonth))
+                        .reduce((sum, s) => sum + s.amount, 0);
+                    document.getElementById('monthSales').textContent = `¥${monthSalesTotal.toFixed(0)}`;
+                }
+            } catch (error) {
+                console.error('加载统计数据失败:', error);
+            }
+        }
+        
+        function renderInventoryOverview(spools) {
+            const container = document.getElementById('inventoryOverview');
+            if (spools.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-8">暂无耗材数据</div>';
+                return;
+            }
+            
+            const categories = [
+                { name: '充足', filter: s => s.remainingWeight / s.initialWeight >= 0.5, color: 'bg-green-500', icon: 'fa-check-circle' },
+                { name: '一般', filter: s => s.remainingWeight / s.initialWeight >= 0.2 && s.remainingWeight / s.initialWeight < 0.5, color: 'bg-yellow-500', icon: 'fa-exclamation-circle' },
+                { name: '不足', filter: s => s.remainingWeight / s.initialWeight < 0.2 && s.remainingWeight > 0, color: 'bg-red-500', icon: 'fa-warning' },
+                { name: '已用完', filter: s => s.remainingWeight <= 0, color: 'bg-gray-500', icon: 'fa-times-circle' }
+            ];
+            
+            container.innerHTML = categories.map(cat => {
+                const items = spools.filter(cat.filter);
+                if (items.length === 0) return '';
+                
+                return `<div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 ${cat.color} rounded-full flex items-center justify-center mr-3">
+                            <i class="fa ${cat.icon} text-white text-sm"></i>
+                        </div>
+                        <div>
+                            <div class="font-medium text-dark">${cat.name}</div>
+                            <div class="text-xs text-gray-500">${items.length} 个耗材</div>
+                        </div>
+                    </div>
+                    <div class="text-sm text-gray-500">
+                        ${items.slice(0, 2).map(s => s.color).join(', ')}${items.length > 2 ? '...' : ''}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+        
+        function renderMaterialDistribution(spools) {
+            const container = document.getElementById('materialDistribution');
+            if (spools.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-8">暂无数据</div>';
+                return;
+            }
+            
+            const materialCount = {};
+            spools.forEach(s => {
+                const material = s.material || '其他';
+                materialCount[material] = (materialCount[material] || 0) + 1;
+            });
+            
+            const colors = { 'PLA': 'bg-blue-500', 'PETG': 'bg-green-500', 'ABS': 'bg-red-500', 'TPU': 'bg-yellow-500', 'ASA': 'bg-purple-500', '其他': 'bg-gray-500' };
+            
+            container.innerHTML = Object.entries(materialCount).map(([material, count]) => {
+                const percentage = (count / spools.length * 100).toFixed(0);
+                const color = colors[material] || 'bg-gray-500';
+                
+                return `<div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 ${color} rounded-full mr-2"></div>
+                        <span class="text-sm text-dark">${material}</span>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-24 h-2 bg-gray-200 rounded-full mr-2 overflow-hidden">
+                            <div class="h-full ${color} rounded-full" style="width: ${percentage}%"></div>
+                        </div>
+                        <span class="text-sm text-gray-500 w-12">${count}个</span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+        
+        function renderRecentExpenses(expenses, expenseTypes) {
+            const container = document.getElementById('recentExpenses');
+            if (expenses.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-8">暂无费用记录</div>';
+                return;
+            }
+
+            const colorMap = {
+                'filament': 'bg-blue-100 text-blue-700',
+                'equipment': 'bg-green-100 text-green-700',
+                'electricity': 'bg-yellow-100 text-yellow-700',
+                'maintenance': 'bg-purple-100 text-purple-700',
+                'other': 'bg-gray-100 text-gray-700'
+            };
+
+            const recent = expenses.slice(0, 5);
+
+            container.innerHTML = recent.map(expense => {
+                const typeInfo = expenseTypes.find(t => t.id === expense.type);
+                const label = typeInfo ? typeInfo.label : (expense.type || '其他');
+                const color = colorMap[expense.type] || colorMap.other;
+                return `<div class="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                    <div class="flex items-center flex-1 min-w-0">
+                        <span class="inline-flex items-center justify-center px-2 py-1 rounded text-xs font-medium ${color} mr-3 w-16 text-center flex-shrink-0">${label}</span>
+                        <div class="min-w-0">
+                            <div class="text-sm text-dark truncate">${expense.description || '无描述'}</div>
+                            <div class="text-xs text-gray-500">${new Date(expense.date).toLocaleDateString('zh-CN')}</div>
+                        </div>
+                    </div>
+                    <span class="font-medium text-red-600 flex-shrink-0 ml-3">-¥${expense.amount.toFixed(2)}</span>
+                </div>`;
+            }).join('');
+        }
+        
+        function initSettings() {
+            const settingsBtn = document.getElementById('settingsBtn');
+            const settingsModal = document.getElementById('settingsModal');
+            const closeModal = document.getElementById('closeModal');
+            const saveSettings = document.getElementById('saveSettings');
+            const siteNameInput = document.getElementById('siteNameInput');
+            const siteTitle = document.getElementById('siteTitle');
+            
+            const savedName = localStorage.getItem('siteName') || 'Leo的百宝箱';
+            siteTitle.textContent = savedName;
+            siteNameInput.value = savedName;
+            
+            settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+            closeModal.addEventListener('click', () => settingsModal.classList.add('hidden'));
+            
+            settingsModal.addEventListener('click', (e) => {
+                if (e.target === settingsModal) settingsModal.classList.add('hidden');
+            });
+            
+            saveSettings.addEventListener('click', () => {
+                const newName = siteNameInput.value.trim() || 'Leo的百宝箱';
+                localStorage.setItem('siteName', newName);
+                siteTitle.textContent = newName;
+                settingsModal.classList.add('hidden');
+            });
+        }
+        
+        function initSidebarToggle() {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarItems = document.querySelectorAll('.sidebar-item span');
+            const siteTitle = document.getElementById('siteTitle');
+            
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (isCollapsed) {
+                sidebar.classList.add('w-16');
+                sidebar.classList.remove('w-64');
+                sidebarItems.forEach(item => item.classList.add('hidden'));
+                if (siteTitle) siteTitle.classList.add('hidden');
+                const icon = sidebarToggle.querySelector('i');
+                if (icon) {
+                    icon.classList.remove('fa-angle-left');
+                    icon.classList.add('fa-angle-right');
+                }
+            }
+            
+            sidebarToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('w-64');
+                sidebar.classList.toggle('w-16');
+                
+                sidebarItems.forEach(item => {
+                    item.classList.toggle('hidden');
+                });
+                
+                if (siteTitle) {
+                    siteTitle.classList.toggle('hidden');
+                }
+                
+                const icon = sidebarToggle.querySelector('i');
+                if (icon) {
+                    icon.classList.toggle('fa-angle-left');
+                    icon.classList.toggle('fa-angle-right');
+                }
+                
+                localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('w-16'));
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStatistics();
+            initSettings();
+            initSidebarToggle();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+{
+  "expenseTypes": [
+    {
+      "id": "filament",
+      "label": "耗材购买"
+    },
+    {
+      "id": "equipment",
+      "label": "设备配件"
+    },
+    {
+      "id": "electricity",
+      "label": "电费"
+    },
+    {
+      "id": "maintenance",
+      "label": "维护保养"
+    },
+    {
+      "id": "other",
+      "label": "其他"
+    }
+  ],
+  "expenseChannels": [
+    {
+      "id": "taobao",
+      "label": "淘宝"
+    },
+    {
+      "id": "jd",
+      "label": "京东"
+    },
+    {
+      "id": "pinduoduo",
+      "label": "拼多多"
+    },
+    {
+      "id": "offline",
+      "label": "线下"
+    }
+  ],
+  "platformColors": {
+    "taobao": "#f57c00",
+    "douyin": "#00b3ff",
+    "pinduoduo": "#fe90bc",
+    "咸鱼": "#00ccf5",
+    "线下": "#7a6e62"
+  },
+  "expenseTypeColors": {
+    "filament": "#90b8f9",
+    "equipment": "#f7963b",
+    "electricity": "#24daff",
+    "maintenance": "#ff809f",
+    "other": "#ababab"
+  }
+}
