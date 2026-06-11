@@ -41,7 +41,28 @@
 - **数据库**: JSON文件存储
 - **图标**: Font Awesome
 
-## 快速开始（让你的朋友也能用）
+## 从 GitHub 获取并运行
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/robber89757/Filament-Management.git
+
+# 2. 进入项目目录
+cd Filament-Management
+
+# 3. 安装依赖（需要先安装 Node.js，下载地址：https://nodejs.org）
+npm install
+
+# 4. 启动服务器
+node app.js
+
+# 5. 打开浏览器访问
+# http://localhost:3001
+```
+
+> **前提条件**：需要安装 [Node.js](https://nodejs.org)（推荐 LTS 版本）
+
+## 快速开始
 
 ### 方式一：Windows 一键启动（推荐）
 
